@@ -46,7 +46,7 @@ function pgtoBadgeClass(k) {
 }
 
 /* ========== SHEETS INTEGRATION (via Apps Script) ========== */
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwvUvt0HAi0ZZqaXNmGvQ534wbt9OWfZe3ryoloZpLifZBPds71Msp6Wz5FEFBvxvqz/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhrQtN107fu5t0kCM0t7icTOGLLHNwSuwdBz0N1leMijGloLKmGHb5x95sPUXAsDlP/exec';
 var sheetSyncing = false;
 var sheetLastSync = null;
 
