@@ -111,10 +111,10 @@ function saveToSheet() {
       vendas: db.vendas,
       nxt: db.nxt
     });
+    var encoded = btoa(unescape(encodeURIComponent(payload)));
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', APPS_SCRIPT_URL, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.timeout = 10000;
+    xhr.open('GET', APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded), true);
+    xhr.timeout = 15000;
     xhr.onload = function() {
       sheetSyncing = false;
       try {
@@ -152,7 +152,7 @@ function saveToSheet() {
       showSyncStatus('Tempo esgotado ao salvar no banco.', 'red');
       resolve(false);
     };
-    xhr.send(payload);
+    xhr.send();
   });
 }
 
