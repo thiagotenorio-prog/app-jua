@@ -14,8 +14,9 @@
     <div class="login-logo">
       <div class="ico">💊</div>
       <h2>Controle de Vendas</h2>
-      <p>Faça login para continuar</p>
+      <p>Sincronize antes de começar</p>
     </div>
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:1.25rem;background:rgba(79,142,247,.1);border:1.5px solid rgba(79,142,247,.4);color:var(--accent)" onclick="syncFromLogin()">☁️ Sincronizar com o banco</button>
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Perfil de acesso</div>
     <div class="login-perfis">
       <div class="perfil-btn" id="pbtn-adm" onclick="selecionarPerfil('adm')">
@@ -31,7 +32,7 @@
     </div>
     <button class="btn btn-primary" style="width:100%" onclick="fazerLogin()">Entrar</button>
     <div class="login-msg" id="login-msg"></div>
-    <div id="sync-status" style="display:none;margin-top:8px;font-size:11px;text-align:center">
+    <div id="sync-status" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:700;text-align:center">
       <span id="sync-msg"></span>
     </div>
   </div>
@@ -47,10 +48,7 @@
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <span id="autosave-ind" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .5s">✔ Salvo automaticamente</span>
-    <span id="google-sync-ind" style="font-size:11px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);display:none">
-      <span id="sync-indicator">☁️</span> <span id="sync-text" style="color:var(--green)">Sincronizado</span>
-    </span>
-    <span id="user-badge" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2)"></span>
+     <span id="user-badge" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2)"></span>
     <button class="btn btn-secondary" id="btn-sync" onclick="syncNow()" title="Sincronizar com banco de dados (Google Sheets)" style="display:none">☁️ Sync</button>
     <button class="btn btn-secondary" id="btn-sheet" onclick="abrirPlanilha()" title="Abrir banco de dados (Google Sheets)" style="display:none">📊 Banco</button>
     <button class="btn btn-secondary" id="btn-csv" onclick="exportarCSV()" title="Exportar dados em CSV">📥 CSV</button>

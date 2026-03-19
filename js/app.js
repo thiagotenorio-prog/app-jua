@@ -52,21 +52,21 @@ var sheetLastSync = null;
 
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
-    showSyncStatus('Baixando dados do banco...', 'amber');
+    showSyncStatus('Conectando ao banco de dados...', 'amber');
     var xhr = new XMLHttpRequest();
     xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
     xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.timeout = 10000;
+    xhr.timeout = 15000;
     xhr.onload = function() {
       try {
         var data = JSON.parse(xhr.responseText);
         if (data.error) {
-          showSyncStatus('Erro: ' + data.error, 'red');
+          showSyncStatus('Não foi possível conectar ao banco. Tente novamente.', 'red');
           resolve(false);
           return;
         }
         if (data.empty) {
-          showSyncStatus('Banco vazio — populando...', 'amber');
+          showSyncStatus('Banco vazio — preparando dados iniciais...', 'amber');
           resolve(false);
           return;
         }
@@ -76,7 +76,7 @@ function loadFromSheet() {
           db.vendas = data.vendas || [];
           db.nxt = data.nxt || db.nxt;
           localStorage.setItem('farm_db', JSON.stringify(db));
-          showSyncStatus('Dados sincronizados do banco!', 'green');
+          showSyncStatus('Dados carregados do banco!', 'green');
           sheetLastSync = new Date();
           resolve(true);
           return;
@@ -89,11 +89,11 @@ function loadFromSheet() {
       }
     };
     xhr.onerror = function() {
-      showSyncStatus('Erro de conexão com o banco.', 'red');
+      showSyncStatus('Sem conexão com o banco. Verifique sua internet.', 'red');
       resolve(false);
     };
     xhr.ontimeout = function() {
-      showSyncStatus('Tempo esgotado ao conectar ao banco.', 'red');
+      showSyncStatus('Conexão lenta. Tente novamente.', 'red');
       resolve(false);
     };
     xhr.send();
@@ -104,7 +104,7 @@ function saveToSheet() {
   return new Promise(function(resolve, reject) {
     if (sheetSyncing) { resolve(false); return; }
     sheetSyncing = true;
-    showSyncStatus('Salvando no banco...', 'amber');
+    showSyncStatus('Sincronizando com o banco...', 'amber');
     var payload = JSON.stringify({
       vendedores: db.vendedores,
       produtos: db.produtos,
@@ -120,7 +120,7 @@ function saveToSheet() {
       try {
         var data = JSON.parse(xhr.responseText);
         if (data.success) {
-          showSyncStatus('Salvo no banco!', 'green');
+          showSyncStatus('Dados sincronizados com sucesso!', 'green');
           sheetLastSync = new Date();
           var ind = document.getElementById('sync-text');
           if (ind) {
@@ -133,23 +133,23 @@ function saveToSheet() {
           }
           resolve(true);
         } else {
-          showSyncStatus('Erro ao salvar: ' + (data.error || 'desconhecido'), 'red');
+          showSyncStatus('Ops! Não conseguimos salvar. Tente novamente.', 'red');
           resolve(false);
         }
       } catch(e) {
-        showSyncStatus('Banco salvo! (resposta não-JSON)', 'green');
+        showSyncStatus('Dados sincronizados!', 'green');
         sheetLastSync = new Date();
         resolve(true);
       }
     };
     xhr.onerror = function() {
       sheetSyncing = false;
-      showSyncStatus('Erro de conexão ao salvar.', 'red');
+      showSyncStatus('Sem conexão. Dados mantidos localmente.', 'red');
       resolve(false);
     };
     xhr.ontimeout = function() {
       sheetSyncing = false;
-      showSyncStatus('Tempo esgotado ao salvar no banco.', 'red');
+      showSyncStatus('Conexão lenta. Tente novamente.', 'red');
       resolve(false);
     };
     xhr.send();
@@ -157,37 +157,85 @@ function saveToSheet() {
 }
 
 function showSyncStatus(msg, color) {
+  var cor = color === 'green' ? '#22c55e' : color === 'red' ? '#f87171' : '#fbbf24';
+  var bg = color === 'green' ? 'rgba(34,197,94,.15)' : color === 'red' ? 'rgba(248,113,113,.15)' : 'rgba(251,191,36,.15)';
   var el = document.getElementById('sheet-status-msg');
   if (el) {
-    var cor = color === 'green' ? '#22c55e' : color === 'red' ? '#f87171' : '#fbbf24';
-    var bg = color === 'green' ? 'rgba(34,197,94,.15)' : color === 'red' ? 'rgba(248,113,113,.15)' : 'rgba(251,191,36,.15)';
     el.style.cssText = 'display:block;position:fixed;top:70px;right:20px;z-index:200;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.3);background:' + bg + ';color:' + cor + ';border:1px solid ' + cor;
     el.textContent = msg;
     setTimeout(function() { el.style.display = 'none'; }, 4000);
   }
+  var loginEl = document.getElementById('sync-status');
+  if (loginEl) {
+    loginEl.style.display = 'block';
+    var txt = document.getElementById('sync-msg');
+    if (txt) {
+      txt.style.cssText = 'font-size:12px;color:' + cor + ';min-height:18px;margin-top:6px;text-align:center';
+      txt.textContent = msg;
+    }
+  }
 }
 
 function syncFromSheet() {
-  showSyncStatus('Baixando...', 'amber');
+  showSyncStatus('Baixando dados do banco...', 'amber');
   loadFromSheet().then(function(ok) {
     if (ok) {
-      showSyncStatus('Sincronizado!', 'green');
+      showSyncStatus('Dados carregados do banco!', 'green');
       if (typeof renderPainel === 'function') renderPainel();
       if (typeof renderVendedores === 'function') renderVendedores();
       if (typeof renderProdutos === 'function') renderProdutos();
       if (typeof renderVendas === 'function') renderVendas();
       if (typeof renderHistorico === 'function') renderHistorico();
     } else {
-      showSyncStatus('Banco vazio ou não encontrado.', 'red');
+      showSyncStatus('Banco vazio. Entre como Admin para popular.', 'amber');
     }
   });
 }
 
+function syncFromLogin() {
+  showSyncStatus('Conectando ao banco...', 'amber');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
+  xhr.timeout = 15000;
+  xhr.onload = function() {
+    try {
+      var data = JSON.parse(xhr.responseText);
+      if (data.error) {
+        showSyncStatus('Não foi possível conectar. Tente novamente.', 'red');
+        return;
+      }
+      if (data.empty) {
+        showSyncStatus('Banco vazio. Entre como Admin para popular.', 'amber');
+        return;
+      }
+      if (data.vendedores || data.produtos || data.vendas) {
+        db.vendedores = data.vendedores || db.vendedores;
+        db.produtos = data.produtos || db.produtos;
+        db.vendas = data.vendas || [];
+        db.nxt = data.nxt || db.nxt;
+        localStorage.setItem('farm_db', JSON.stringify(db));
+        showSyncStatus('Dados carregados do banco! Pronto para usar.', 'green');
+        return;
+      }
+      showSyncStatus('Banco vazio. Entre como Admin para popular.', 'amber');
+    } catch(e) {
+      showSyncStatus('Erro ao processar dados do banco.', 'red');
+    }
+  };
+  xhr.onerror = function() {
+    showSyncStatus('Sem conexão. Verifique sua internet.', 'red');
+  };
+  xhr.ontimeout = function() {
+    showSyncStatus('Conexão lenta. Tente novamente.', 'red');
+  };
+  xhr.send();
+}
+
 function syncNow() {
-  showSyncStatus('Enviando...', 'amber');
+  showSyncStatus('Enviando dados para o banco...', 'amber');
   saveToSheet().then(function(ok) {
     if (!ok) {
-      showSyncStatus('Erro ao enviar para o banco.', 'red');
+      showSyncStatus('Ops! Não conseguimos enviar. Tente novamente.', 'red');
     }
   });
 }
@@ -288,23 +336,22 @@ function enterApp(metodo) {
   renderPainel();
   document.getElementById('btn-sync').style.display = '';
   document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
-  document.getElementById('google-sync-ind').style.display = '';
-  showSyncStatus('Baixando dados do banco...', 'amber');
+  showSyncStatus('Conectando ao banco de dados...', 'amber');
   loadFromSheet().then(function(ok) {
     if (!ok) {
-      showSyncStatus('Populando banco com dados iniciais...', 'amber');
+      showSyncStatus('Banco vazio — preparando dados...', 'amber');
       saveToSheet().then(function(saved) {
         if (saved) {
-          showSyncStatus('Banco populado com sucesso!', 'green');
+          showSyncStatus('Tudo pronto! Dados sincronizados com a planilha!', 'green');
         } else {
-          showSyncStatus('Erro ao popular banco.', 'red');
+          showSyncStatus('Banco vazio. Entre como Admin para popular.', 'amber');
         }
       }).catch(function(err) {
-        showSyncStatus('Erro ao salvar: ' + err.message, 'red');
+        showSyncStatus('Não foi possível salvar no banco.', 'red');
       });
     }
   }).catch(function(err) {
-    showSyncStatus('Erro: ' + err.message, 'red');
+    showSyncStatus('Sem conexão com o banco.', 'red');
   });
 }
 
@@ -1124,7 +1171,6 @@ function fazerLogin() {
     var senha = document.getElementById('login-senha').value;
     if (senha !== SENHA_ADM) { msg.textContent='Senha incorreta.'; document.getElementById('login-senha').value=''; return; }
   }
-  showSyncStatus('Entrando...', 'amber');
   enterApp(perfilSelecionado);
 }
 
@@ -1136,7 +1182,6 @@ function fazerLogout() {
   document.getElementById('pbtn-vendedor').classList.remove('sel');
   document.getElementById('campo-senha').style.display = 'none';
   document.getElementById('tela-login').style.display = 'flex';
-  document.getElementById('google-sync-ind').style.display = 'none';
   document.getElementById('btn-sync').style.display = 'none';
   document.getElementById('btn-sheet').style.display = 'none';
 }
