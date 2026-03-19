@@ -1,0 +1,4 @@
+# Dados locais — não versionar
+localStorage backup é gerado pelo próprio app
+*.html
+!index.html

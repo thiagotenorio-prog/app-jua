@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Vendas — Farmácia</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="tela-login">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="ico">💊</div>
+      <h2>Controle de Vendas</h2>
+      <p>Selecione seu perfil para entrar</p>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Perfil de acesso</div>
+    <div class="login-perfis">
+      <div class="perfil-btn" id="pbtn-adm" onclick="selecionarPerfil('adm')">
+        <span class="pi">👑</span>Administrador
+      </div>
+      <div class="perfil-btn" id="pbtn-vendedor" onclick="selecionarPerfil('vendedor')">
+        <span class="pi">🧑‍💼</span>Vendedor
+      </div>
+    </div>
+    <div class="field" id="campo-senha" style="display:none;margin-bottom:1rem">
+      <label>Senha</label>
+      <input type="password" id="login-senha" placeholder="Digite a senha..." onkeydown="if(event.key==='Enter')fazerLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="fazerLogin()">Entrar</button>
+    <div class="login-msg" id="login-msg"></div>
+    <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">
+      Vendedor: acesso para lançar vendas<br>
+      Administrador: acesso completo ao sistema
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💊</div>
+    <div>
+      <h1>Controle de Vendas</h1>
+      <p id="hdate"></p>
+    </div>
+  </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <span id="autosave-ind" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .5s">✔ Salvo automaticamente</span>
+    <span id="user-badge" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2)"></span>
+    <button class="btn btn-primary" id="btn-salvar" onclick="salvarArquivo()" title="Gera um novo arquivo HTML com todos os dados salvos dentro">💾 Salvar arquivo</button>
+    <button class="btn btn-secondary" id="btn-csv" onclick="exportarCSV()">Exportar CSV</button>
+    <button class="btn btn-danger" id="btn-zerar" onclick="document.getElementById('modal-reset').classList.add('open')">Zerar período</button>
+    <button class="btn btn-secondary" onclick="fazerLogout()" style="border-color:var(--border2)">Sair</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('painel')">📊 Painel</button>
+    <button class="tab" onclick="showTab('lancar')">➕ Lançar</button>
+    <button class="tab" onclick="showTab('vendedores')">👤 Vendedores</button>
+    <button class="tab" onclick="showTab('produtos')">📦 Produtos</button>
+    <button class="tab" onclick="showTab('vendas')">🛒 Vendas</button>
+    <button class="tab" onclick="showTab('historico')">📋 Histórico</button>
+    <button class="tab" onclick="showTab('fechamento')">📄 Fechamento</button>
+  </div>
+
+  <div id="sec-painel" class="section active">
+    <div class="metrics" id="metrics"></div>
+    <div class="card"><div class="card-title">Ranking de vendedores</div><div id="ranking"></div></div>
+    <div class="card"><div class="card-title">Top produtos</div><div id="top-prod"></div></div>
+  </div>
+
+  <div id="sec-lancar" class="section">
+    <div class="card">
+      <div class="card-title">1. Selecione o vendedor</div>
+      <div class="vendor-grid" id="vend-sel"></div>
+    </div>
+    <div id="lancar-form" style="display:none">
+      <div class="card">
+        <div class="card-title">2. Adicione produtos</div>
+        <div class="field" style="margin-bottom:1rem">
+          <label>Buscar produto</label>
+          <input id="l-busca" placeholder="Digite o nome..." oninput="filtrarProds()">
+        </div>
+        <div id="l-lista" style="max-height:300px;overflow-y:auto"></div>
+        <div class="fm" id="lancar-msg"></div>
+      </div>
+      <div id="carrinho-card" class="card" style="display:none">
+        <div class="card-title">3. Confirme — <span id="carr-vend" style="color:var(--accent)"></span></div>
+        <div id="carr-itens"></div>
+        <div class="tot-bar"><div class="tl">Total da venda</div><div class="tv" id="carr-total">R$ 0,00</div></div>
+        <div style="margin-top:1.25rem">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">4. Forma de pagamento *</div>
+          <div class="pgto-grid" id="pgto-grid">
+            <div class="pgto-btn" onclick="selPgto('dinheiro')"><span class="pgto-icon">💵</span>Dinheiro</div>
+            <div class="pgto-btn" onclick="selPgto('pix')"><span class="pgto-icon">📲</span>PIX</div>
+            <div class="pgto-btn" onclick="selPgto('debito')"><span class="pgto-icon">💳</span>Débito</div>
+            <div class="pgto-btn" onclick="selPgto('credito_1_6')"><span class="pgto-icon">💳</span>Crédito 1–6x</div>
+            <div class="pgto-btn" onclick="selPgto('credito_7_10')"><span class="pgto-icon">💳</span>Crédito 7–10x</div>
+            <div class="pgto-btn" onclick="selPgto('convenio')"><span class="pgto-icon">🏥</span>Convênio</div>
+          </div>
+          <div id="pgto-msg" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:1rem">
+          <button class="btn btn-primary" onclick="confirmarVenda()">✔ Confirmar venda</button>
+          <button class="btn btn-secondary" onclick="limparCarrinho()">Limpar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sec-vendedores" class="section">
+    <div class="card"><div class="card-title">Desempenho por vendedor</div><div class="tw"><table id="tab-vend"></table></div></div>
+    <div class="card">
+      <div class="card-title">Cadastrar novo vendedor</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="flex:1;min-width:180px">
+          <label>Nome do vendedor *</label>
+          <input id="nv-nome" placeholder="Ex: MARIA" style="text-transform:uppercase">
+        </div>
+        <button class="btn btn-primary" onclick="addVendedor()" style="height:38px;align-self:flex-end">Salvar vendedor</button>
+      </div>
+      <div class="fm" id="nv-msg"></div>
+    </div>
+    <div class="card" id="card-det-v" style="display:none">
+      <div class="card-title" id="title-det-v"></div>
+      <div class="tw"><table id="tab-det-v"></table></div>
+    </div>
+  </div>
+
+  <div id="sec-produtos" class="section">
+    <div class="sb"><input id="p-busca" placeholder="Buscar produto..." style="flex:1;min-width:160px" oninput="renderProdutos()"></div>
+    <div class="card"><div class="card-title">Estoque e vendas</div><div class="tw"><table id="tab-prods"></table></div></div>
+    <div class="card">
+      <div class="card-title">Adicionar produto</div>
+      <div class="form-grid">
+        <div class="field"><label>Nome *</label><input id="np-nome" placeholder="Nome do produto"></div>
+        <div class="field"><label>Preço de custo (R$)</label><input id="np-custo" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="field"><label>Preço de venda (R$) *</label><input id="np-preco" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="field"><label>Estoque</label><input id="np-est" type="number" placeholder="0"></div>
+      </div>
+      <button class="btn btn-primary" onclick="addProduto()">Salvar produto</button>
+      <div class="fm" id="np-msg"></div>
+    </div>
+  </div>
+
+  <div id="sec-vendas" class="section">
+    <div class="sb" style="margin-bottom:1rem;gap:8px;flex-wrap:wrap">
+      <select id="sv-vend" onchange="renderVendas()" style="min-width:140px">
+        <option value="">Todos os vendedores</option>
+      </select>
+      <select id="sv-pgto" onchange="renderVendas()" style="min-width:140px">
+        <option value="">Todas as formas</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="pix">PIX</option>
+        <option value="debito">Débito</option>
+        <option value="credito_1_6">Crédito 1–6x</option>
+        <option value="credito_7_10">Crédito 7–10x</option>
+        <option value="convenio">Convênio</option>
+      </select>
+      <input id="sv-busca" placeholder="Buscar vendedor ou produto..." style="flex:1;min-width:160px" oninput="renderVendas()">
+    </div>
+    <div id="sv-lista"></div>
+  </div>
+
+  <div id="sec-historico" class="section">
+    <div class="sb">
+      <select id="h-vend" onchange="renderHistorico()" style="min-width:140px"><option value="">Todos os vendedores</option></select>
+      <select id="h-pgto" onchange="renderHistorico()" style="min-width:140px">
+        <option value="">Todas as formas</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="pix">PIX</option>
+        <option value="debito">Débito</option>
+        <option value="credito_1_6">Crédito 1–6x</option>
+        <option value="credito_7_10">Crédito 7–10x</option>
+        <option value="convenio">Convênio</option>
+      </select>
+      <input id="h-busca" placeholder="Buscar produto..." style="flex:1;min-width:140px" oninput="renderHistorico()">
+    </div>
+    <div class="card"><div class="card-title">Histórico de vendas</div><div class="tw"><table id="tab-hist"></table></div></div>
+  </div>
+
+  <div id="sec-fechamento" class="section">
+    <div class="card">
+      <div class="card-title">Dados do fechamento</div>
+      <div class="form-grid">
+        <div class="field"><label>Período (nome) *</label><input id="f-periodo" placeholder="Ex: Março 2025"></div>
+        <div class="field"><label>Nome da farmácia</label><input id="f-farm" placeholder="Ex: Farmácia Central"></div>
+        <div class="field"><label>Responsável</label><input id="f-resp" placeholder="Ex: João Silva"></div>
+        <div class="field"><label>Observações</label><input id="f-obs" placeholder="Anotações para o RH..."></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Filtrar por data (opcional)</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field" style="flex:1;min-width:160px"><label>Data inicial</label><input id="f-dt-ini" type="date"></div>
+          <div class="field" style="flex:1;min-width:160px"><label>Data final</label><input id="f-dt-fim" type="date"></div>
+          <button class="btn btn-secondary" onclick="limparDatas()" style="height:38px;align-self:flex-end">Limpar datas</button>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:8px">Se não preencher as datas, o fechamento considera todas as vendas do período.</div>
+      </div>
+      <button class="btn btn-primary" onclick="gerarFechamento()">Visualizar fechamento</button>
+    </div>
+    <div id="prev-fech" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:1rem;justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="document.getElementById('prev-fech').style.display='none'">Fechar</button>
+        <button class="btn btn-primary" onclick="imprimirFechamento()">🖨️ Imprimir / Salvar PDF</button>
+      </div>
+      <div id="conteudo-fechamento"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Reset -->
+<div id="modal-reset" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">⚠️ Zerar período</div>
+    <p style="font-size:14px;color:var(--text2);line-height:1.7">Isso apaga todo o histórico de vendas. <strong style="color:var(--red)">Não pode ser desfeito.</strong></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-reset').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-danger" style="padding:9px 18px" onclick="resetar()">Sim, zerar tudo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Venda (grupo) -->
+<div id="modal-editar-grupo" class="modal-overlay">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-title">✏️ Editar venda</div>
+    <div id="modal-eg-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="fecharModalEditarGrupo()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoGrupo()">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Venda -->
+<div id="modal-editar" class="modal-overlay">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">✏️ Editar venda</div>
+    <div id="modal-editar-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="fecharModalEditar()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicao()">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<script id="dados-salvos" type="application/json"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
