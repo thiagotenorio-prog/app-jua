@@ -1,4 +1,5 @@
-# Dados locais — não versionar
-localStorage backup é gerado pelo próprio app
+# Dados locais
+banco-revisao/
 *.html
 !index.html
+vercel.exe

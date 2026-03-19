@@ -45,102 +45,115 @@ function pgtoBadgeClass(k) {
   return 'badge-amber';
 }
 
-/* ========== GOOGLE OAUTH ========== */
-var googleAccessToken = null;
-var googleUser = null;
+/* ========== SHEETS INTEGRATION (via Apps Script) ========== */
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwvUvt0HAi0ZZqaXNmGvQ534wbt9OWfZe3ryoloZpLifZBPds71Msp6Wz5FEFBvxvqz/exec';
+var sheetSyncing = false;
+var sheetLastSync = null;
 
-function initGoogleOAuth() {
-  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleOAuthResponse,
-      auto_select: false
+function loadFromSheet() {
+  return new Promise(function(resolve, reject) {
+    showSyncStatus('Baixando dados do banco...', 'amber');
+    fetch(APPS_SCRIPT_URL + '?action=read', {
+      method: 'GET',
+      mode: 'no-cors'
+    })
+    .then(function() {
+      setTimeout(function() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
+        xhr.onload = function() {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.error) {
+              showSyncStatus('Erro: ' + data.error, 'red');
+              resolve(false);
+              return;
+            }
+            if (data.empty) {
+              showSyncStatus('Banco vazio — usando dados locais.', 'amber');
+              resolve(false);
+              return;
+            }
+            if (data.vendas || data.vendedores || data.produtos) {
+              db.vendedores = data.vendedores || db.vendedores;
+              db.produtos = data.produtos || db.produtos;
+              db.vendas = data.vendas || [];
+              db.nxt = data.nxt || db.nxt;
+              localStorage.setItem('farm_db', JSON.stringify(db));
+              showSyncStatus('Dados sincronizados do banco!', 'green');
+              sheetLastSync = new Date();
+              resolve(true);
+              return;
+            }
+            showSyncStatus('Banco não contém dados válidos.', 'red');
+            resolve(false);
+          } catch(e) {
+            showSyncStatus('Erro ao processar dados do banco.', 'red');
+            resolve(false);
+          }
+        };
+        xhr.onerror = function() {
+          showSyncStatus('Erro de conexão com o banco.', 'red');
+          resolve(false);
+        };
+        xhr.send();
+      }, 2000);
+    })
+    .catch(function(err) {
+      showSyncStatus('Erro: ' + err.message, 'red');
+      resolve(false);
     });
-    google.accounts.id.renderButton(
-      document.getElementById('g_id_onbutton'),
-      { type: 'standard', theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'rectangular', width: 280 }
-    );
-    google.accounts.id.prompt(function(notification) {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // Fallback: show button again
-        console.log('[OAuth] Prompt not shown, button will handle it');
-      }
-    });
-  }
+  });
 }
 
-function handleGoogleOAuthResponse(response) {
-  try {
-    var payload = JSON.parse(atob(response.credential.split('.')[1]));
-    googleUser = {
-      name: payload.name,
-      email: payload.email,
-      picture: payload.picture
+function saveToSheet() {
+  return new Promise(function(resolve, reject) {
+    if (sheetSyncing) { resolve(false); return; }
+    sheetSyncing = true;
+    showSyncStatus('Salvando no banco...', 'amber');
+    var payload = JSON.stringify({
+      vendedores: db.vendedores,
+      produtos: db.produtos,
+      vendas: db.vendas,
+      nxt: db.nxt
+    });
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', APPS_SCRIPT_URL, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function() {
+      sheetSyncing = false;
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data.success) {
+          showSyncStatus('Salvo no banco!', 'green');
+          sheetLastSync = new Date();
+          var ind = document.getElementById('sync-text');
+          if (ind) {
+            ind.textContent = '☁️ Salvo';
+            ind.style.color = 'var(--green)';
+            setTimeout(function() {
+              ind.textContent = 'Sincronizado';
+              ind.style.color = 'var(--green)';
+            }, 3000);
+          }
+          resolve(true);
+        } else {
+          showSyncStatus('Erro ao salvar: ' + (data.error || 'desconhecido'), 'red');
+          resolve(false);
+        }
+      } catch(e) {
+        showSyncStatus('Banco salvo! (resposta não-JSON)', 'green');
+        sheetLastSync = new Date();
+        resolve(true);
+      }
     };
-    googleAccessToken = response.credential;
-    localStorage.setItem('google_user', JSON.stringify(googleUser));
-    localStorage.setItem('google_token', response.credential);
-    onGoogleLoginSuccess();
-  } catch(e) {
-    console.error('[OAuth] Erro ao processar login:', e);
-    document.getElementById('login-msg').textContent = 'Erro no login Google. Tente novamente.';
-  }
-}
-
-function onGoogleLoginSuccess() {
-  document.getElementById('google-user-photo').src = googleUser.picture;
-  document.getElementById('google-user-name').textContent = googleUser.name;
-  document.getElementById('google-user-email').textContent = googleUser.email;
-  document.getElementById('google-user-info').style.display = 'block';
-  document.getElementById('login-subtitle').textContent = 'Logado como ' + googleUser.name;
-
-  // Hide login buttons after successful Google login
-  document.getElementById('google-login-section').style.display = 'none';
-  document.querySelectorAll('.login-perfis .perfil-btn').forEach(function(b){ b.style.display='none'; });
-  document.getElementById('campo-senha').style.display = 'none';
-  document.querySelector('#tela-login .btn-primary').style.display = 'none';
-  document.querySelector('#tela-login .login-msg').textContent = '';
-
-  // Check if sheet is configured
-  var sheetId = localStorage.getItem('sheet_id');
-  if (sheetId) {
-    showSyncStatus('Carregando dados do banco...', 'amber');
-    loadFromSheet().then(function(ok) {
-      if (ok) {
-        showSyncStatus('Dados carregados do banco!', 'green');
-        db._syncedFromSheet = true;
-      } else {
-        showSyncStatus('Banco não encontrado. Configure abaixo.', 'red');
-      }
-      enterApp('google');
-    }).catch(function(err) {
-      showSyncStatus('Erro ao carregar: ' + err.message, 'red');
-      enterApp('google');
-    });
-  } else {
-    showSyncStatus('Banco não configurado. Clique em "☁️ Banco" para configurar.', 'amber');
-    enterApp('google');
-  }
-}
-      enterApp('google');
-    }).catch(function(err) {
-      showSyncStatus('Erro ao carregar: ' + err.message, 'red');
-      enterApp('google');
-    });
-  } else {
-    enterApp('google');
-  }
-}
-
-function signOutGoogle() {
-  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-    google.accounts.id.disableAutoSelect();
-  }
-  googleAccessToken = null;
-  googleUser = null;
-  localStorage.removeItem('google_user');
-  localStorage.removeItem('google_token');
-  location.reload();
+    xhr.onerror = function() {
+      sheetSyncing = false;
+      showSyncStatus('Erro de conexão ao salvar.', 'red');
+      resolve(false);
+    };
+    xhr.send(payload);
+  });
 }
 
 function showSyncStatus(msg, color) {
@@ -155,13 +168,42 @@ function showSyncStatus(msg, color) {
   }
 }
 
+function syncFromSheet() {
+  showSyncStatus('Baixando...', 'amber');
+  loadFromSheet().then(function(ok) {
+    if (ok) {
+      showSyncStatus('Sincronizado!', 'green');
+      if (typeof renderPainel === 'function') renderPainel();
+      if (typeof renderVendedores === 'function') renderVendedores();
+      if (typeof renderProdutos === 'function') renderProdutos();
+      if (typeof renderVendas === 'function') renderVendas();
+      if (typeof renderHistorico === 'function') renderHistorico();
+    } else {
+      showSyncStatus('Banco vazio ou não encontrado.', 'red');
+    }
+  });
+}
+
+function syncNow() {
+  showSyncStatus('Enviando...', 'amber');
+  saveToSheet().then(function(ok) {
+    if (!ok) {
+      showSyncStatus('Erro ao enviar para o banco.', 'red');
+    }
+  });
+}
+
+function abrirPlanilha() {
+  window.open('https://docs.google.com/spreadsheets/d/1RwUiXrhat6ZHwMcSkfhJ9HNIwBUqSZNUaQZzA0qf3mI/edit', '_blank');
+}
+
 /* ========== DB ========== */
 function loadDB() {
   try {
     var el = document.getElementById('dados-salvos');
     if (el && el.textContent.trim()) {
       var d = JSON.parse(el.textContent);
-      if (d && d.vendas) { localStorage.setItem('farm_db', JSON.stringify(d)); return d; }
+      if (d && (d.vendas || d.vendedores)) { localStorage.setItem('farm_db', JSON.stringify(d)); return d; }
     }
   } catch(e) {}
   try { var d2 = localStorage.getItem('farm_db'); if (d2) return JSON.parse(d2); } catch(e) {}
@@ -173,26 +215,7 @@ function saveDB() {
   alteracoesPendentes = true;
   var btn = document.getElementById('btn-salvar');
   if (btn && !btn.textContent.includes('✔')) btn.textContent = '💾 Salvar *';
-
-  // Sync to Google Sheet if logged in with Google
-  if (googleAccessToken) {
-    var sheetId = localStorage.getItem('sheet_id');
-    if (sheetId) {
-      saveToSheet(sheetId).then(function(ok) {
-        if (ok) {
-          var ind = document.getElementById('sync-text');
-          if (ind) {
-            ind.textContent = '☁️ Salvo';
-            ind.style.color = 'var(--green)';
-            setTimeout(function() {
-              ind.textContent = 'Sincronizado';
-              ind.style.color = 'var(--green)';
-            }, 3000);
-          }
-        }
-      });
-    }
-  }
+  saveToSheet();
 }
 
 var alteracoesPendentes = false;
@@ -207,6 +230,7 @@ function autoSalvar() {
   if (btn) { btn.textContent = '💾 Salvar'; btn.title = 'Salvo às ' + ultimoAutoSave.toLocaleTimeString('pt-BR'); }
   var ind = document.getElementById('autosave-ind');
   if (ind) { ind.textContent = 'Salvo às ' + ultimoAutoSave.toLocaleTimeString('pt-BR'); ind.style.opacity = '1'; setTimeout(function(){ ind.style.opacity = '0'; }, 3000); }
+  saveToSheet();
 }
 setInterval(autoSalvar, 10000);
 
@@ -227,252 +251,6 @@ function salvarArquivo() {
   alteracoesPendentes = false;
   var btn = document.getElementById('btn-salvar');
   if (btn) { btn.textContent = '✔ Salvo!'; setTimeout(function(){ btn.textContent = '💾 Salvar'; }, 2500); }
-}
-
-/* ========== SHEETS API ========== */
-function sheetsApiFetch(endpoint, options) {
-  if (!googleAccessToken) return Promise.reject(new Error('Não autenticado'));
-  options = options || {};
-  options.headers = options.headers || {};
-  options.headers['Authorization'] = 'Bearer ' + googleAccessToken;
-  options.headers['Content-Type'] = 'application/json';
-  return fetch('https://sheets.googleapis.com/v4' + endpoint, options)
-    .then(function(r) {
-      if (r.status === 401) {
-        signOutGoogle();
-        return Promise.reject(new Error('Sessão expirou. Faça login novamente.'));
-      }
-      return r.json().then(function(data) {
-        if (r.ok) return data;
-        return Promise.reject(new Error(data.error ? data.error.message : 'Erro na API'));
-      });
-    });
-}
-
-function loadFromSheet() {
-  return new Promise(function(resolve, reject) {
-    var sheetId = localStorage.getItem('sheet_id');
-    if (!sheetId || !googleAccessToken) {
-      resolve(false); return;
-    }
-    showSyncStatus('Baixando dados...', 'amber');
-    sheetsApiFetch('/spreadsheets/' + sheetId + '/values/DB!A1?majorDimension=ROWS')
-      .then(function(data) {
-        if (data.values && data.values[0] && data.values[0][0]) {
-          try {
-            var parsed = JSON.parse(data.values[0][0]);
-            if (parsed && (parsed.vendas || parsed.vendedores)) {
-              db.vendedores = parsed.vendedores || db.vendedores;
-              db.produtos = parsed.produtos || db.produtos;
-              db.vendas = parsed.vendas || [];
-              db.nxt = parsed.nxt || db.nxt;
-              localStorage.setItem('farm_db', JSON.stringify(db));
-              showSyncStatus('Dados sincronizados!', 'green');
-              resolve(true);
-              return;
-            }
-          } catch(e) {
-            console.error('[Sheet] Parse error:', e);
-          }
-        }
-        resolve(false);
-      })
-      .catch(function(err) {
-        console.error('[Sheet] Load error:', err);
-        showSyncStatus('Erro: ' + err.message, 'red');
-        resolve(false);
-      });
-  });
-}
-
-function saveToSheet(sheetId) {
-  return new Promise(function(resolve, reject) {
-    if (!googleAccessToken) { resolve(false); return; }
-    var payload = JSON.stringify({
-      vendedores: db.vendedores,
-      produtos: db.produtos,
-      vendas: db.vendas,
-      nxt: db.nxt,
-      updatedAt: new Date().toISOString()
-    });
-    var body = {
-      range: 'DB!A1',
-      majorDimension: 'ROWS',
-      values: [[payload]]
-    };
-    sheetsApiFetch('/spreadsheets/' + sheetId + '/values/DB!A1', {
-      method: 'PUT',
-      body: JSON.stringify(body)
-    }).then(function(data) {
-      resolve(true);
-    }).catch(function(err) {
-      console.error('[Sheet] Save error:', err);
-      resolve(false);
-    });
-  });
-}
-
-function syncFromSheet() {
-  showSyncStatus('Baixando...', 'amber');
-  loadFromSheet().then(function(ok) {
-    if (ok) {
-      showSyncStatus('Sincronizado!', 'green');
-      if (typeof renderPainel === 'function') renderPainel();
-      if (typeof renderVendedores === 'function') renderVendedores();
-      if (typeof renderProdutos === 'function') renderProdutos();
-      if (typeof renderVendas === 'function') renderVendas();
-      if (typeof renderHistorico === 'function') renderHistorico();
-    } else {
-      showSyncStatus('Banco vazio ou não encontrado.', 'red');
-        mostrarErroSync(
-        'Dados não encontrados no banco.',
-        'Verifique se o banco existe e se você tem acesso de edição. ' +
-        'Verifique também se a aba se chama <strong>DB</strong> (não "Sheet1").'
-      );
-    }
-  });
-}
-
-function syncNow() {
-  var sheetId = localStorage.getItem('sheet_id');
-  if (!sheetId) {
-    mostrarErroSync('Banco de dados não configurado.', 'Clique no botão "☁️ Banco" no menu superior para configurar o banco de dados Google Sheets.');
-    return;
-  }
-  showSyncStatus('Enviando...', 'amber');
-  saveToSheet(sheetId).then(function(ok) {
-    if (ok) {
-      showSyncStatus('Enviado!', 'green');
-    } else {
-      showSyncStatus('Erro ao enviar.', 'red');
-    }
-  });
-}
-
-var _syncRetryCallback = null;
-function retrySync() {
-  fecharModalSyncError();
-  if (_syncRetryCallback) _syncRetryCallback();
-}
-
-function mostrarErroSync(msg, solution) {
-  document.getElementById('sync-error-msg').textContent = msg;
-  document.getElementById('sync-error-solution').innerHTML = solution || '';
-  document.getElementById('modal-sync-error').classList.add('open');
-}
-
-function fecharModalSyncError() {
-  document.getElementById('modal-sync-error').classList.remove('open');
-}
-
-function abrirPlanilha() {
-  var id = localStorage.getItem('sheet_id');
-  if (id) window.open('https://docs.google.com/spreadsheets/d/' + id + '/edit', '_blank');
-}
-
-/* ========== SHEET CONFIG MODAL ========== */
-function openSheetConfig() {
-  if (!googleAccessToken) {
-    alert('Faça login com Google primeiro para configurar o banco.');
-    return;
-  }
-  document.getElementById('modal-sheet-config').classList.add('open');
-  atualizarSheetConfigUI();
-}
-
-function fecharModalSheetConfig() {
-  document.getElementById('modal-sheet-config').classList.remove('open');
-}
-
-function atualizarSheetConfigUI() {
-  var sheetId = localStorage.getItem('sheet_id');
-  var statusEl = document.getElementById('sheet-status-text');
-  var formEl = document.getElementById('sheet-config-form');
-  var connectedEl = document.getElementById('sheet-connected-area');
-  var shareEmailEl = document.getElementById('share-email');
-  var idDisplayEl = document.getElementById('sheet-id-display');
-  var nameEl = document.getElementById('sheet-name');
-
-  // Get user's email for sharing info
-  if (googleUser && googleUser.email) {
-    shareEmailEl.textContent = googleUser.email;
-  }
-
-  if (sheetId) {
-    statusEl.textContent = 'Banco conectado!';
-    statusEl.style.color = 'var(--green)';
-    formEl.style.display = 'none';
-    connectedEl.style.display = 'block';
-    idDisplayEl.textContent = sheetId;
-
-    // Try to get sheet name
-    sheetsApiFetch('/spreadsheets/' + sheetId + '?fields=properties.title')
-      .then(function(data) {
-        if (data.properties && data.properties.title) {
-          nameEl.textContent = data.properties.title;
-        }
-      })
-      .catch(function() {});
-  } else {
-    statusEl.textContent = 'Nenhum banco conectado';
-    statusEl.style.color = 'var(--text2)';
-    formEl.style.display = 'block';
-    connectedEl.style.display = 'none';
-  }
-}
-
-function salvarSheetConfig() {
-  var id = document.getElementById('sheet-id-input').value.trim();
-  if (!id) {
-    document.getElementById('sheet-criar-msg').style.color = 'var(--red)';
-    document.getElementById('sheet-criar-msg').textContent = 'Digite o ID do banco.';
-    return;
-  }
-  localStorage.setItem('sheet_id', id);
-  document.getElementById('sheet-criar-msg').style.color = 'var(--green)';
-    document.getElementById('sheet-criar-msg').textContent = '✔ Banco salvo!';
-
-  // Test if sheet is accessible
-  sheetsApiFetch('/spreadsheets/' + id + '?fields=spreadsheetId')
-    .then(function(data) {
-      if (data.spreadsheetId) {
-        atualizarSheetConfigUI();
-        syncFromSheet();
-      }
-    })
-    .catch(function(err) {
-      document.getElementById('sheet-criar-msg').style.color = 'var(--red)';
-      document.getElementById('sheet-criar-msg').textContent = 'Erro: ' + err.message;
-      localStorage.removeItem('sheet_id');
-    });
-}
-
-function criarNovaPlanilha() {
-  if (!googleAccessToken) return;
-  var msgEl = document.getElementById('sheet-criar-msg');
-  msgEl.style.color = 'var(--amber)';
-    msgEl.textContent = 'Criando banco...';
-
-  var body = {
-    properties: { title: 'Farmácia - Banco de Dados App Jua' },
-    sheets: [{ properties: { title: 'DB', gridProperties: { rowCount: 1, columnCount: 1 } } }]
-  };
-
-  sheetsApiFetch('/spreadsheets', { method: 'POST', body: JSON.stringify(body) })
-    .then(function(data) {
-      if (data.spreadsheetId) {
-        var newId = data.spreadsheetId;
-        document.getElementById('sheet-id-input').value = newId;
-        localStorage.setItem('sheet_id', newId);
-        msgEl.style.color = 'var(--green)';
-        msgEl.innerHTML = '✔ Banco criado! <a href="https://docs.google.com/spreadsheets/d/' + newId + '/edit" target="_blank" style="color:var(--accent)">Abrir</a><br>Compartilhe este banco com sua equipe para sincronizar dados.';
-        atualizarSheetConfigUI();
-      }
-    })
-    .catch(function(err) {
-      msgEl.style.color = 'var(--red)';
-      msgEl.textContent = 'Erro: ' + err.message;
-    });
 }
 
 /* ========== MAIN ========== */
@@ -509,11 +287,10 @@ function enterApp(metodo) {
   document.getElementById('tela-login').style.display = 'none';
   aplicarPermissoes();
   renderPainel();
-  if (googleAccessToken) {
-    document.getElementById('btn-sync').style.display = '';
-    document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
-    document.getElementById('google-sync-ind').style.display = '';
-  }
+  document.getElementById('btn-sync').style.display = '';
+  document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
+  document.getElementById('google-sync-ind').style.display = '';
+  loadFromSheet();
 }
 
 /* ---- PAINEL ---- */
@@ -557,7 +334,7 @@ function renderPainel() {
   document.getElementById('top-prod').innerHTML = th;
 }
 
-/* ---- LANÇAR ---- */
+/* ---- LANCAR ---- */
 function renderLancar() {
   var h = '';
   db.vendedores.filter(function(v){return v.ativo!==false;}).forEach(function(v){
@@ -768,7 +545,7 @@ function excluirVendedor(nome) {
   if(!checarAdm('Excluir vendedor')) return;
   var temVendas=db.vendas.some(function(v){return v.vendedor===nome;});
   if(temVendas){alert('Não é possível excluir um vendedor que possui vendas registradas.');return;}
-  if(!confirm('Excluir permanentemente "'+nome+'"?')) return;
+  if(!confirm('Excluir permanentemente "'+nome+'?"')) return;
   db.vendedores=db.vendedores.filter(function(v){return v.nome!==nome;});
   saveDB(); renderVendedores();
 }
@@ -806,7 +583,7 @@ function addProduto() {
   renderProdutos();
 }
 
-/* ---- HISTÓRICO ---- */
+/* ---- HISTORICO ---- */
 function renderHistorico() {
   var sel=document.getElementById('h-vend'); var cur=sel.value;
   sel.innerHTML='<option value="">Todos os vendedores</option>';
@@ -838,7 +615,7 @@ function renderHistorico() {
   document.getElementById('tab-hist').innerHTML=h;
 }
 
-/* ---- EDIÇÃO DE VENDA ---- */
+/* ---- EDICAO DE VENDA ---- */
 var editandoId = null;
 var editCarr = [];
 var editPgto = null;
@@ -1336,10 +1113,6 @@ function fazerLogin() {
 }
 
 function fazerLogout() {
-  if (googleAccessToken) {
-    signOutGoogle();
-    return;
-  }
   usuarioAtual = null; perfilSelecionado = null;
   document.getElementById('login-senha').value = '';
   document.getElementById('login-msg').textContent = '';
@@ -1347,43 +1120,31 @@ function fazerLogout() {
   document.getElementById('pbtn-vendedor').classList.remove('sel');
   document.getElementById('campo-senha').style.display = 'none';
   document.getElementById('tela-login').style.display = 'flex';
-  document.getElementById('google-login-section').style.display = 'block';
-  document.querySelectorAll('.login-perfis .perfil-btn').forEach(function(b){ b.style.display = ''; });
-  document.querySelector('#tela-login .btn-primary').style.display = '';
-  document.getElementById('login-subtitle').textContent = 'Faça login para continuar';
-  document.getElementById('google-user-info').style.display = 'none';
   document.getElementById('google-sync-ind').style.display = 'none';
-  var btns = ['btn-sync','btn-sheet','btn-backup','btn-csv','btn-zerar'];
-  btns.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.getElementById('btn-sync').style.display = 'none';
+  document.getElementById('btn-sheet').style.display = 'none';
 }
 
-function isAdm() { return usuarioAtual === 'adm' || usuarioAtual === 'google'; }
+function isAdm() { return usuarioAtual === 'adm'; }
 
 function aplicarPermissoes() {
   var adm = isAdm();
   var badge = document.getElementById('user-badge');
   if (badge) {
-    badge.textContent = usuarioAtual === 'google' ? (googleUser ? '🟢 ' + googleUser.name : '🟢 Google') : (adm ? '👑 ADM' : '🧑‍💼 Vendedor');
+    badge.textContent = adm ? '👑 ADM' : '🧑‍💼 Vendedor';
     badge.style.color = adm ? 'var(--amber)' : 'var(--accent)';
     badge.style.borderColor = adm ? 'rgba(251,191,36,.5)' : 'rgba(79,142,247,.5)';
   }
-  // Sync, Banco e CSV sempre visíveis quando logado
   var allButtons = ['btn-sync','btn-sheet','btn-csv'];
   allButtons.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=''; });
-  // Backup visível para todos (ADM e Google)
   var backup = document.getElementById('btn-backup');
   if(backup) backup.style.display = '';
-  // Zerar só ADM
   var zerar = document.getElementById('btn-zerar');
   if(zerar) zerar.style.display = adm ? '' : 'none';
-  // Tabs restritas só ADM
   document.querySelectorAll('.tab').forEach(function(t){
     if(t.textContent.indexOf('Fechamento')>=0 || t.textContent.indexOf('Produtos')>=0 || t.textContent.indexOf('Vendedores')>=0)
       t.style.display = adm ? '' : 'none';
   });
-  // Indicador de sync visível para Google
-  var syncInd = document.getElementById('google-sync-ind');
-  if(syncInd) syncInd.style.display = usuarioAtual === 'google' ? '' : 'none';
 }
 
 function checarAdm(acao) {
@@ -1392,8 +1153,6 @@ function checarAdm(acao) {
 }
 
 /* ---- INIT ---- */
-if (typeof GOOGLE_CLIENT_ID !== 'undefined') {
-  window.addEventListener('load', function() {
-    setTimeout(initGoogleOAuth, 100);
-  });
-}
+window.addEventListener('load', function() {
+  db = loadDB();
+});
