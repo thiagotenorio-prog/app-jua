@@ -118,6 +118,16 @@ function onGoogleLoginSuccess() {
       enterApp('google');
     });
   } else {
+    showSyncStatus('Banco não configurado. Clique em "☁️ Banco" para configurar.', 'amber');
+    enterApp('google');
+  }
+}
+      enterApp('google');
+    }).catch(function(err) {
+      showSyncStatus('Erro ao carregar: ' + err.message, 'red');
+      enterApp('google');
+    });
+  } else {
     enterApp('google');
   }
 }
@@ -326,7 +336,7 @@ function syncFromSheet() {
 function syncNow() {
   var sheetId = localStorage.getItem('sheet_id');
   if (!sheetId) {
-    mostrarErroSync('Banco não configurado.', 'Clique em "💾 Banco" no menu para configurar.');
+    mostrarErroSync('Banco de dados não configurado.', 'Clique no botão "☁️ Banco" no menu superior para configurar o banco de dados Google Sheets.');
     return;
   }
   showSyncStatus('Enviando...', 'amber');
@@ -1342,9 +1352,9 @@ function fazerLogout() {
   document.querySelector('#tela-login .btn-primary').style.display = '';
   document.getElementById('login-subtitle').textContent = 'Faça login para continuar';
   document.getElementById('google-user-info').style.display = 'none';
-  document.getElementById('btn-sync').style.display = 'none';
-  document.getElementById('btn-sheet').style.display = 'none';
   document.getElementById('google-sync-ind').style.display = 'none';
+  var btns = ['btn-sync','btn-sheet','btn-backup','btn-csv','btn-zerar'];
+  btns.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
 }
 
 function isAdm() { return usuarioAtual === 'adm' || usuarioAtual === 'google'; }
@@ -1357,13 +1367,23 @@ function aplicarPermissoes() {
     badge.style.color = adm ? 'var(--amber)' : 'var(--accent)';
     badge.style.borderColor = adm ? 'rgba(251,191,36,.5)' : 'rgba(79,142,247,.5)';
   }
-  var idsAdm = ['btn-salvar','btn-csv','btn-zerar','btn-sync'];
-  if (usuarioAtual === 'google') idsAdm.push('btn-sheet');
-  idsAdm.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=adm?'':'none'; });
+  // Sync, Banco e CSV sempre visíveis quando logado
+  var allButtons = ['btn-sync','btn-sheet','btn-csv'];
+  allButtons.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=''; });
+  // Backup visível para todos (ADM e Google)
+  var backup = document.getElementById('btn-backup');
+  if(backup) backup.style.display = '';
+  // Zerar só ADM
+  var zerar = document.getElementById('btn-zerar');
+  if(zerar) zerar.style.display = adm ? '' : 'none';
+  // Tabs restritas só ADM
   document.querySelectorAll('.tab').forEach(function(t){
     if(t.textContent.indexOf('Fechamento')>=0 || t.textContent.indexOf('Produtos')>=0 || t.textContent.indexOf('Vendedores')>=0)
       t.style.display = adm ? '' : 'none';
   });
+  // Indicador de sync visível para Google
+  var syncInd = document.getElementById('google-sync-ind');
+  if(syncInd) syncInd.style.display = usuarioAtual === 'google' ? '' : 'none';
 }
 
 function checarAdm(acao) {

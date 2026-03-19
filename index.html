@@ -67,17 +67,17 @@
     </div>
   </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <span id="autosave-ind" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .5s">✔ Salvo automaticamente</span>
-    <span id="google-sync-ind" style="font-size:11px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);display:none">
-      <span id="sync-indicator">☁️</span> <span id="sync-text" style="color:var(--green)">Sincronizado</span>
-    </span>
-    <span id="user-badge" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2)"></span>
-    <button class="btn btn-secondary" id="btn-sync" onclick="syncNow()" title="Sincronizar com Google Sheets" style="display:none">☁️ Sync</button>
-    <button class="btn btn-secondary" id="btn-sheet" onclick="openSheetConfig()" title="Configurar banco de dados Google" style="display:none">💾 Banco</button>
-    <button class="btn btn-primary" id="btn-salvar" onclick="salvarArquivo()" title="Gera um novo arquivo HTML com todos os dados salvos dentro">💾 Salvar</button>
-    <button class="btn btn-secondary" id="btn-csv" onclick="exportarCSV()">CSV</button>
-    <button class="btn btn-danger" id="btn-zerar" onclick="document.getElementById('modal-reset').classList.add('open')">Zerar</button>
-    <button class="btn btn-secondary" onclick="fazerLogout()" style="border-color:var(--border2)">Sair</button>
+     <span id="autosave-ind" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .5s">✔ Salvo automaticamente</span>
+     <span id="google-sync-ind" style="font-size:11px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);display:none">
+       <span id="sync-indicator">☁️</span> <span id="sync-text" style="color:var(--green)">Sincronizado</span>
+     </span>
+     <span id="user-badge" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2)"></span>
+     <button class="btn btn-secondary" id="btn-sync" onclick="syncNow()" title="Sincronizar com banco de dados (Google Sheets)" style="display:none">☁️ Sync</button>
+     <button class="btn btn-secondary" id="btn-sheet" onclick="openSheetConfig()" title="Configurar banco de dados (Google Sheets)" style="display:none">☁️ Banco</button>
+     <button class="btn btn-secondary" id="btn-backup" onclick="salvarArquivo()" title="Baixar backup local (HTML)">💾 Backup</button>
+     <button class="btn btn-secondary" id="btn-csv" onclick="exportarCSV()" title="Exportar dados em CSV">📥 CSV</button>
+     <button class="btn btn-danger" id="btn-zerar" onclick="document.getElementById('modal-reset').classList.add('open')" style="display:none">Zerar</button>
+     <button class="btn btn-secondary" onclick="fazerLogout()" style="border-color:var(--border2)">Sair</button>
   </div>
 </header>
 
@@ -294,8 +294,8 @@
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="salvarSheetConfig()">Salvar</button>
-        <button class="btn btn-secondary" onclick="criarNovaPlanilha()" style="background:var(--surface3)">+ Criar novo</button>
+        <button class="btn btn-secondary" onclick="criarNovaPlanilha()" style="background:var(--surface3)">+ Criar novo banco</button>
+        <button class="btn btn-primary" onclick="salvarSheetConfig()">Conectar existente</button>
       </div>
       <div id="sheet-criar-msg" style="font-size:12px;margin-top:8px;min-height:18px"></div>
     </div>
@@ -315,8 +315,8 @@
     <div style="margin-top:1rem;padding:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);line-height:1.6">
         <strong style="color:var(--amber)">Importante:</strong> o banco precisa estar<br>
-        compartilhada com: <code id="share-email" style="color:var(--accent);font-size:11px">carregando...</code><br><br>
-        ou deixada como <strong style="color:var(--green)">"Qualquer pessoa com o link"</strong> (Editor)
+        compartilhado como: <code id="share-email" style="color:var(--accent);font-size:11px">carregando...</code><br><br>
+        ou deixe como <strong style="color:var(--green)">"Qualquer pessoa com o link"</strong> (Editor)
       </div>
     </div>
     <div class="modal-actions">
