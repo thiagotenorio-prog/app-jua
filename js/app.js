@@ -157,14 +157,13 @@ function saveToSheet() {
 }
 
 function showSyncStatus(msg, color) {
-  var el = document.getElementById('sync-status');
+  var el = document.getElementById('sheet-status-msg');
   if (el) {
-    el.style.display = 'block';
-    var txt = document.getElementById('sync-msg');
-    if (txt) {
-      txt.textContent = msg;
-      txt.style.color = color === 'green' ? 'var(--green)' : color === 'red' ? 'var(--red)' : 'var(--amber)';
-    }
+    var cor = color === 'green' ? '#22c55e' : color === 'red' ? '#f87171' : '#fbbf24';
+    var bg = color === 'green' ? 'rgba(34,197,94,.15)' : color === 'red' ? 'rgba(248,113,113,.15)' : 'rgba(251,191,36,.15)';
+    el.style.cssText = 'display:block;position:fixed;top:70px;right:20px;z-index:200;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.3);background:' + bg + ';color:' + cor + ';border:1px solid ' + cor;
+    el.textContent = msg;
+    setTimeout(function() { el.style.display = 'none'; }, 4000);
   }
 }
 
@@ -290,15 +289,22 @@ function enterApp(metodo) {
   document.getElementById('btn-sync').style.display = '';
   document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
   document.getElementById('google-sync-ind').style.display = '';
+  showSyncStatus('Baixando dados do banco...', 'amber');
   loadFromSheet().then(function(ok) {
     if (!ok) {
       showSyncStatus('Populando banco com dados iniciais...', 'amber');
       saveToSheet().then(function(saved) {
         if (saved) {
           showSyncStatus('Banco populado com sucesso!', 'green');
+        } else {
+          showSyncStatus('Erro ao popular banco.', 'red');
         }
+      }).catch(function(err) {
+        showSyncStatus('Erro ao salvar: ' + err.message, 'red');
       });
     }
+  }).catch(function(err) {
+    showSyncStatus('Erro: ' + err.message, 'red');
   });
 }
 
@@ -1118,6 +1124,7 @@ function fazerLogin() {
     var senha = document.getElementById('login-senha').value;
     if (senha !== SENHA_ADM) { msg.textContent='Senha incorreta.'; document.getElementById('login-senha').value=''; return; }
   }
+  showSyncStatus('Entrando...', 'amber');
   enterApp(perfilSelecionado);
 }
 
