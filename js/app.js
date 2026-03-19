@@ -1134,14 +1134,6 @@ function imprimirFechamento() {
 }
 
 /* ---- CSV & RESET ---- */
-function exportarCSV() {
-  var linhas=[['Data','Vendedor','Produto','Pagamento','Qtd','Preco','Total']];
-  db.vendas.forEach(function(v){linhas.push([v.data,v.vendedor,v.produto,pgtoLabel(v.pagamento),v.quantidade,v.preco.toFixed(2),v.total.toFixed(2)]);});
-  var csv=linhas.map(function(r){return r.join(';');}).join('\n');
-  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='vendas_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
-}
 
 function resetar() {
   if (!checarAdm('Zerar período')) return;
@@ -1196,10 +1188,8 @@ function aplicarPermissoes() {
     badge.style.color = adm ? 'var(--amber)' : 'var(--accent)';
     badge.style.borderColor = adm ? 'rgba(251,191,36,.5)' : 'rgba(79,142,247,.5)';
   }
-  var allButtons = ['btn-sync','btn-sheet','btn-csv'];
+  var allButtons = ['btn-sync','btn-sheet'];
   allButtons.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=''; });
-  var backup = document.getElementById('btn-backup');
-  if(backup) backup.style.display = '';
   var zerar = document.getElementById('btn-zerar');
   if(zerar) zerar.style.display = adm ? '' : 'none';
   document.querySelectorAll('.tab').forEach(function(t){
