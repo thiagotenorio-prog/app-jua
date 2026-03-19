@@ -53,56 +53,50 @@ var sheetLastSync = null;
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
     showSyncStatus('Baixando dados do banco...', 'amber');
-    fetch(APPS_SCRIPT_URL + '?action=read', {
-      method: 'GET',
-      mode: 'no-cors'
-    })
-    .then(function() {
-      setTimeout(function() {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
-        xhr.onload = function() {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.error) {
-              showSyncStatus('Erro: ' + data.error, 'red');
-              resolve(false);
-              return;
-            }
-            if (data.empty) {
-              showSyncStatus('Banco vazio — usando dados locais.', 'amber');
-              resolve(false);
-              return;
-            }
-            if (data.vendas || data.vendedores || data.produtos) {
-              db.vendedores = data.vendedores || db.vendedores;
-              db.produtos = data.produtos || db.produtos;
-              db.vendas = data.vendas || [];
-              db.nxt = data.nxt || db.nxt;
-              localStorage.setItem('farm_db', JSON.stringify(db));
-              showSyncStatus('Dados sincronizados do banco!', 'green');
-              sheetLastSync = new Date();
-              resolve(true);
-              return;
-            }
-            showSyncStatus('Banco não contém dados válidos.', 'red');
-            resolve(false);
-          } catch(e) {
-            showSyncStatus('Erro ao processar dados do banco.', 'red');
-            resolve(false);
-          }
-        };
-        xhr.onerror = function() {
-          showSyncStatus('Erro de conexão com o banco.', 'red');
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 10000;
+    xhr.onload = function() {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data.error) {
+          showSyncStatus('Erro: ' + data.error, 'red');
           resolve(false);
-        };
-        xhr.send();
-      }, 2000);
-    })
-    .catch(function(err) {
-      showSyncStatus('Erro: ' + err.message, 'red');
+          return;
+        }
+        if (data.empty) {
+          showSyncStatus('Banco vazio — populando...', 'amber');
+          resolve(false);
+          return;
+        }
+        if (data.vendas || data.vendedores || data.produtos) {
+          db.vendedores = data.vendedores || db.vendedores;
+          db.produtos = data.produtos || db.produtos;
+          db.vendas = data.vendas || [];
+          db.nxt = data.nxt || db.nxt;
+          localStorage.setItem('farm_db', JSON.stringify(db));
+          showSyncStatus('Dados sincronizados do banco!', 'green');
+          sheetLastSync = new Date();
+          resolve(true);
+          return;
+        }
+        showSyncStatus('Banco não contém dados válidos.', 'red');
+        resolve(false);
+      } catch(e) {
+        showSyncStatus('Erro ao processar dados do banco.', 'red');
+        resolve(false);
+      }
+    };
+    xhr.onerror = function() {
+      showSyncStatus('Erro de conexão com o banco.', 'red');
       resolve(false);
-    });
+    };
+    xhr.ontimeout = function() {
+      showSyncStatus('Tempo esgotado ao conectar ao banco.', 'red');
+      resolve(false);
+    };
+    xhr.send();
   });
 }
 
@@ -120,6 +114,7 @@ function saveToSheet() {
     var xhr = new XMLHttpRequest();
     xhr.open('POST', APPS_SCRIPT_URL, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 10000;
     xhr.onload = function() {
       sheetSyncing = false;
       try {
@@ -150,6 +145,11 @@ function saveToSheet() {
     xhr.onerror = function() {
       sheetSyncing = false;
       showSyncStatus('Erro de conexão ao salvar.', 'red');
+      resolve(false);
+    };
+    xhr.ontimeout = function() {
+      sheetSyncing = false;
+      showSyncStatus('Tempo esgotado ao salvar no banco.', 'red');
       resolve(false);
     };
     xhr.send(payload);
@@ -290,7 +290,16 @@ function enterApp(metodo) {
   document.getElementById('btn-sync').style.display = '';
   document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
   document.getElementById('google-sync-ind').style.display = '';
-  loadFromSheet();
+  loadFromSheet().then(function(ok) {
+    if (!ok) {
+      showSyncStatus('Populando banco com dados iniciais...', 'amber');
+      saveToSheet().then(function(saved) {
+        if (saved) {
+          showSyncStatus('Banco populado com sucesso!', 'green');
+        }
+      });
+    }
+  });
 }
 
 /* ---- PAINEL ---- */
