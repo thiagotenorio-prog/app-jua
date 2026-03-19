@@ -104,13 +104,13 @@ function onGoogleLoginSuccess() {
   // Check if sheet is configured
   var sheetId = localStorage.getItem('sheet_id');
   if (sheetId) {
-    showSyncStatus('Carregando dados da planilha...', 'amber');
+    showSyncStatus('Carregando dados do banco...', 'amber');
     loadFromSheet().then(function(ok) {
       if (ok) {
-        showSyncStatus('Dados carregados da planilha!', 'green');
+        showSyncStatus('Dados carregados do banco!', 'green');
         db._syncedFromSheet = true;
       } else {
-        showSyncStatus('Planilha não encontrada. Configure abaixo.', 'red');
+        showSyncStatus('Banco não encontrado. Configure abaixo.', 'red');
       }
       enterApp('google');
     }).catch(function(err) {
@@ -313,10 +313,10 @@ function syncFromSheet() {
       if (typeof renderVendas === 'function') renderVendas();
       if (typeof renderHistorico === 'function') renderHistorico();
     } else {
-      showSyncStatus('Planilha vazia ou não encontrada.', 'red');
-      mostrarErroSync(
-        'Dados não encontrados na planilha.',
-        'Verifique se a planilha existe e se você tem acesso de edição. ' +
+      showSyncStatus('Banco vazio ou não encontrado.', 'red');
+        mostrarErroSync(
+        'Dados não encontrados no banco.',
+        'Verifique se o banco existe e se você tem acesso de edição. ' +
         'Verifique também se a aba se chama <strong>DB</strong> (não "Sheet1").'
       );
     }
@@ -326,7 +326,7 @@ function syncFromSheet() {
 function syncNow() {
   var sheetId = localStorage.getItem('sheet_id');
   if (!sheetId) {
-    mostrarErroSync('Planilha não configurada.', 'Clique em "📊 Planilha" no menu para configurar.');
+    mostrarErroSync('Banco não configurado.', 'Clique em "💾 Banco" no menu para configurar.');
     return;
   }
   showSyncStatus('Enviando...', 'amber');
@@ -363,7 +363,7 @@ function abrirPlanilha() {
 /* ========== SHEET CONFIG MODAL ========== */
 function openSheetConfig() {
   if (!googleAccessToken) {
-    alert('Faça login com Google primeiro para configurar a planilha.');
+    alert('Faça login com Google primeiro para configurar o banco.');
     return;
   }
   document.getElementById('modal-sheet-config').classList.add('open');
@@ -389,7 +389,7 @@ function atualizarSheetConfigUI() {
   }
 
   if (sheetId) {
-    statusEl.textContent = 'Planilha conectada!';
+    statusEl.textContent = 'Banco conectado!';
     statusEl.style.color = 'var(--green)';
     formEl.style.display = 'none';
     connectedEl.style.display = 'block';
@@ -404,7 +404,7 @@ function atualizarSheetConfigUI() {
       })
       .catch(function() {});
   } else {
-    statusEl.textContent = 'Nenhuma planilha conectada';
+    statusEl.textContent = 'Nenhum banco conectado';
     statusEl.style.color = 'var(--text2)';
     formEl.style.display = 'block';
     connectedEl.style.display = 'none';
@@ -415,12 +415,12 @@ function salvarSheetConfig() {
   var id = document.getElementById('sheet-id-input').value.trim();
   if (!id) {
     document.getElementById('sheet-criar-msg').style.color = 'var(--red)';
-    document.getElementById('sheet-criar-msg').textContent = 'Digite o ID da planilha.';
+    document.getElementById('sheet-criar-msg').textContent = 'Digite o ID do banco.';
     return;
   }
   localStorage.setItem('sheet_id', id);
   document.getElementById('sheet-criar-msg').style.color = 'var(--green)';
-  document.getElementById('sheet-criar-msg').textContent = '✔ Planilha salva!';
+    document.getElementById('sheet-criar-msg').textContent = '✔ Banco salvo!';
 
   // Test if sheet is accessible
   sheetsApiFetch('/spreadsheets/' + id + '?fields=spreadsheetId')
@@ -441,7 +441,7 @@ function criarNovaPlanilha() {
   if (!googleAccessToken) return;
   var msgEl = document.getElementById('sheet-criar-msg');
   msgEl.style.color = 'var(--amber)';
-  msgEl.textContent = 'Criando planilha...';
+    msgEl.textContent = 'Criando banco...';
 
   var body = {
     properties: { title: 'Farmácia - Banco de Dados App Jua' },
@@ -455,7 +455,7 @@ function criarNovaPlanilha() {
         document.getElementById('sheet-id-input').value = newId;
         localStorage.setItem('sheet_id', newId);
         msgEl.style.color = 'var(--green)';
-        msgEl.innerHTML = '✔ Planilha criada! <a href="https://docs.google.com/spreadsheets/d/' + newId + '/edit" target="_blank" style="color:var(--accent)">Abrir</a><br>Compartilhe esta planilha com sua equipe para sincronizar dados.';
+        msgEl.innerHTML = '✔ Banco criado! <a href="https://docs.google.com/spreadsheets/d/' + newId + '/edit" target="_blank" style="color:var(--accent)">Abrir</a><br>Compartilhe este banco com sua equipe para sincronizar dados.';
         atualizarSheetConfigUI();
       }
     })

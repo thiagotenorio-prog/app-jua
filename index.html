@@ -73,7 +73,7 @@
     </span>
     <span id="user-badge" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2)"></span>
     <button class="btn btn-secondary" id="btn-sync" onclick="syncNow()" title="Sincronizar com Google Sheets" style="display:none">☁️ Sync</button>
-    <button class="btn btn-secondary" id="btn-sheet" onclick="openSheetConfig()" title="Configurar planilha Google" style="display:none">📊 Planilha</button>
+    <button class="btn btn-secondary" id="btn-sheet" onclick="openSheetConfig()" title="Configurar banco de dados Google" style="display:none">💾 Banco</button>
     <button class="btn btn-primary" id="btn-salvar" onclick="salvarArquivo()" title="Gera um novo arquivo HTML com todos os dados salvos dentro">💾 Salvar</button>
     <button class="btn btn-secondary" id="btn-csv" onclick="exportarCSV()">CSV</button>
     <button class="btn btn-danger" id="btn-zerar" onclick="document.getElementById('modal-reset').classList.add('open')">Zerar</button>
@@ -274,28 +274,28 @@
   </div>
 </div>
 
-<!-- Modal Configurar Planilha -->
+<!-- Modal Configurar Banco -->
 <div id="modal-sheet-config" class="modal-overlay">
   <div class="modal" style="max-width:520px">
-    <div class="modal-title">📊 Configurar Google Sheets</div>
+    <div class="modal-title">💾 Configurar Banco de Dados</div>
     <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">
       Conecte uma planilha Google para sincronizar os dados entre dispositivos.<br>
-      <strong style="color:var(--accent)">Only for admin:</strong> cada dispositivo conectado à mesma planilha compartilha os mesmos dados.
+      <strong style="color:var(--accent)">Only for admin:</strong> cada dispositivo conectado ao mesmo banco compartilha os mesmos dados.
     </p>
     <div id="sheet-status-area" style="margin-bottom:1rem;padding:10px;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border)">
       <div id="sheet-status-text" style="font-size:13px;color:var(--text2)">Carregando...</div>
     </div>
     <div id="sheet-config-form" style="display:none">
       <div class="field" style="margin-bottom:1rem">
-        <label>ID da Planilha Google</label>
+        <label>ID do Banco Google</label>
         <input id="sheet-id-input" placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" style="width:100%">
         <div style="font-size:11px;color:var(--text3);margin-top:4px">
-          Copie o ID da URL da planilha: docs.google.com/spreadsheets/d/<strong style="color:var(--accent)">AQUI</strong>/edit
+          Copie o ID da URL do banco: docs.google.com/spreadsheets/d/<strong style="color:var(--accent)">AQUI</strong>/edit
         </div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="salvarSheetConfig()">Salvar</button>
-        <button class="btn btn-secondary" onclick="criarNovaPlanilha()" style="background:var(--surface3)">+ Criar nova</button>
+        <button class="btn btn-secondary" onclick="criarNovaPlanilha()" style="background:var(--surface3)">+ Criar novo</button>
       </div>
       <div id="sheet-criar-msg" style="font-size:12px;margin-top:8px;min-height:18px"></div>
     </div>
@@ -303,18 +303,18 @@
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="font-size:20px">📊</span>
         <div>
-          <div id="sheet-name" style="font-weight:700;font-size:14px;color:var(--text)">Planilha conectada</div>
+          <div id="sheet-name" style="font-weight:700;font-size:14px;color:var(--text)">Banco conectado</div>
           <div id="sheet-id-display" style="font-size:11px;color:var(--text3);font-family:monospace"></div>
         </div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="syncFromSheet()">☁️ Sincronizar agora</button>
-        <button class="btn btn-secondary" onclick="abrirPlanilha()" style="background:var(--surface3)">🔗 Abrir planilha</button>
+        <button class="btn btn-secondary" onclick="abrirPlanilha()" style="background:var(--surface3)">🔗 Abrir banco</button>
       </div>
     </div>
     <div style="margin-top:1rem;padding:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);line-height:1.6">
-        <strong style="color:var(--amber)">Importante:</strong> a planilha precisa estar<br>
+        <strong style="color:var(--amber)">Importante:</strong> o banco precisa estar<br>
         compartilhada com: <code id="share-email" style="color:var(--accent);font-size:11px">carregando...</code><br><br>
         ou deixada como <strong style="color:var(--green)">"Qualquer pessoa com o link"</strong> (Editor)
       </div>
