@@ -58,8 +58,10 @@ function loadFromSheet() {
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.timeout = 15000;
     xhr.onload = function() {
+      console.log('📥 Resposta do banco (raw):', xhr.responseText);
       try {
         var data = JSON.parse(xhr.responseText);
+        console.log('📥 Resposta do banco (parsed):', data);
         if (data.error) {
           showSyncStatus('Não foi possível conectar ao banco. Tente novamente.', 'red');
           resolve(false);
@@ -116,6 +118,7 @@ function saveToSheet() {
     xhr.open('GET', APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded), true);
     xhr.timeout = 15000;
     xhr.onload = function() {
+      console.log('📤 Resposta ao salvar (raw):', xhr.responseText);
       sheetSyncing = false;
       try {
         var data = JSON.parse(xhr.responseText);
@@ -198,8 +201,10 @@ function syncFromLogin() {
   xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
   xhr.timeout = 15000;
   xhr.onload = function() {
+    console.log('🔄 syncFromLogin raw:', xhr.responseText);
     try {
       var data = JSON.parse(xhr.responseText);
+      console.log('🔄 syncFromLogin parsed:', data);
       if (data.error) {
         showSyncStatus('Não foi possível conectar. Tente novamente.', 'red');
         return;
