@@ -47,7 +47,7 @@ function pgtoBadgeClass(k) {
 
 /* ========== SHEETS INTEGRATION (via Apps Script) ========== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
-var CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+var CORS_PROXY = 'https://corsproxy.io/?';
 var sheetSyncing = false;
 var sheetLastSync = null;
 
