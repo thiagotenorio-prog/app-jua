@@ -12,8 +12,8 @@
 <div id="tela-login">
   <div class="login-box">
     <div class="login-logo">
-      <div class="ico">💊</div>
-      <h2>Controle de Vendas</h2>
+      <img src="img/logo-popularfarma.png" alt="Popular Farma Juazeiro" style="height:60px;width:auto;object-fit:contain;margin-bottom:8px" onerror="this.style.display='none'">
+      <h2>Popular Farma Juazeiro</h2>
       <p>Sincronize antes de começar</p>
     </div>
     <button class="btn btn-secondary" style="width:100%;margin-bottom:1.25rem;background:rgba(79,142,247,.1);border:1.5px solid rgba(79,142,247,.4);color:var(--accent)" onclick="syncFromLogin()">☁️ Sincronizar com o banco</button>
@@ -40,10 +40,10 @@
 
 <header>
   <div class="logo">
-    <div class="logo-icon">💊</div>
+    <img src="img/logo-popularfarma.png" alt="Popular Farma Juazeiro" style="height:42px;width:auto;object-fit:contain" onerror="this.style.display='none'">
     <div>
-      <h1>Controle de Vendas</h1>
-      <p id="hdate"></p>
+      <h1 style="color:#e53e3e">Popular Farma</h1>
+      <p style="font-size:12px;color:var(--text2)">Juazeiro &bull; <span id="hdate"></span></p>
     </div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -78,10 +78,18 @@
       <div class="card-title">1. Selecione o vendedor</div>
       <div class="vendor-grid" id="vend-sel"></div>
     </div>
-    <div id="lancar-form" style="display:none">
-      <div class="card">
-        <div class="card-title">2. Adicione produtos</div>
-        <div class="field" style="margin-bottom:1rem">
+      <div id="lancar-form" style="display:none">
+        <div class="card">
+          <div class="card-title">2. Adicione produtos</div>
+          <div style="background:var(--surface2);border:1px solid rgba(79,142,247,.3);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:18px">📷</span>
+            <div style="flex:1;min-width:180px">
+              <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Leitor de código de barras (EAN)</div>
+              <input id="l-ean" placeholder="Bipe aqui ou digite o EAN..." maxlength="14" autocomplete="off" style="width:100%;padding:8px 11px;font-size:14px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-family:monospace;letter-spacing:.08em" oninput="onEanInput(this.value)" onkeydown="if(event.key==='Enter'){bipEan(this.value);this.value='';this.focus();}">
+            </div>
+            <div id="ean-msg" style="font-size:13px;min-width:160px;font-weight:600"></div>
+          </div>
+          <div class="field" style="margin-bottom:1rem">
           <label>Buscar produto</label>
           <input id="l-busca" placeholder="Digite o nome..." oninput="filtrarProds()">
         </div>
@@ -104,8 +112,9 @@
           </div>
           <div id="pgto-msg" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:1rem">
-          <button class="btn btn-primary" onclick="confirmarVenda()">✔ Confirmar venda</button>
+        <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="confirmarVenda(false)">✔ Confirmar venda</button>
+          <button class="btn btn-secondary" style="background:rgba(251,191,36,.15);border-color:var(--amber);color:var(--amber)" onclick="confirmarVenda(true)">🖨️ Confirmar e imprimir</button>
           <button class="btn btn-secondary" onclick="limparCarrinho()">Limpar</button>
         </div>
       </div>
@@ -140,6 +149,14 @@
         <div class="field"><label>Nome *</label><input id="np-nome" placeholder="Nome do produto"></div>
         <div class="field"><label>Preço de custo (R$)</label><input id="np-custo" type="number" step="0.01" placeholder="0,00"></div>
         <div class="field"><label>Preço de venda (R$) *</label><input id="np-preco" type="number" step="0.01" placeholder="0,00"></div>
+        <div class="field">
+          <label>EAN / Código de barras</label>
+          <input id="np-ean" placeholder="Ex: 7891234567890" maxlength="14" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+        <div class="field">
+          <label>Comissão (%)</label>
+          <input id="np-comissao" type="number" min="0" max="100" step="0.5" placeholder="0">
+        </div>
         <div class="field"><label>Estoque</label><input id="np-est" type="number" placeholder="0"></div>
       </div>
       <button class="btn btn-primary" onclick="addProduto()">Salvar produto</button>

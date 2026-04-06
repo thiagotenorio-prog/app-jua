@@ -1,3 +1,9 @@
+// ============================================================
+// CONSTANTES GLOBAIS — Popular Farma
+// ============================================================
+var NOME_FARMACIA = 'Popular Farma Juazeiro';
+var LOGO_PATH = 'https://app-jua.vercel.app/img/logo-popularfarma.png';
+
 var VENDS = ['LAIS','IVAN','LIVIA','JADILSON','CARLA','BETANIA'];
 var PRODS = [
   {id:1,nome:'HISTAMIN',preco:16.99,est:10},{id:2,nome:'OMEGA 3',preco:29.99,est:528},
@@ -343,6 +349,7 @@ function enterApp(metodo) {
   document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
   showSyncStatus('Conectando ao banco de dados...', 'amber');
   loadFromSheet().then(function(ok) {
+    migrarCamposNovos();
     if (!ok) {
       showSyncStatus('Banco vazio — preparando dados...', 'amber');
       saveToSheet().then(function(saved) {
@@ -476,7 +483,7 @@ function renderCarrinho() {
 function remC(id){carr=carr.filter(function(x){return x.id!==id;}); var el=document.getElementById('q'+id); if(el)el.value=0; renderCarrinho();}
 function limparCarrinho(){carr=[]; pgtoSel=null; atualizarPgtoUI(); document.querySelectorAll('[id^="q"]').forEach(function(e){if(!isNaN(e.id.slice(1)))e.value=0;}); renderCarrinho();}
 
-function confirmarVenda() {
+function confirmarVenda(imprimir) {
   if(!carr.length||!vSel) return;
   if(!pgtoSel){
     document.getElementById('pgto-msg').textContent = '⚠️ Selecione a forma de pagamento antes de confirmar.';
@@ -494,7 +501,11 @@ function confirmarVenda() {
   var m=document.getElementById('lancar-msg'); m.style.color='var(--green)';
   m.textContent='✔ Venda de '+fmt(tot)+' registrada para '+vSel+' ('+pgtoLabel(pgtoSel)+')!';
   setTimeout(function(){m.textContent='';},5000);
+  var grupoIdGerado = grupoId;
   carr=[]; pgtoSel=null; atualizarPgtoUI(); renderLancar(); renderPainel();
+  if (imprimir) {
+    imprimirComprovante(grupoIdGerado);
+  }
 }
 
 /* ---- VENDEDORES ---- */
@@ -552,7 +563,7 @@ function renderProdutos() {
   var lista=db.produtos.filter(function(p){return p.nome.toLowerCase().indexOf(b)>=0;});
   var vp={};
   db.vendas.filter(function(v){return !v.cancelada;}).forEach(function(v){if(!vp[v.produtoId])vp[v.produtoId]={qtd:0,total:0};vp[v.produtoId].qtd+=v.quantidade;vp[v.produtoId].total+=v.total;});
-  var h='<tr><th>#</th><th>Produto</th><th>Custo</th><th>Venda</th><th>Margem</th><th>Estoque</th><th>Vendido</th><th>Receita</th><th>Lucro</th><th></th></tr>';
+  var h='<tr><th>#</th><th>Produto</th><th>Custo</th><th>Venda</th><th>Margem</th><th>Estoque</th><th>Vendido</th><th>Receita</th><th>Lucro</th><th>EAN</th><th style="text-align:center">Com.%</th><th></th></tr>';
   lista.forEach(function(p){
     var v=vp[p.id]||{qtd:0,total:0};
     var bg=p.est<=0?'badge-red':p.est<=5?'badge-amber':'badge-green';
@@ -561,6 +572,8 @@ function renderProdutos() {
     var lucro=custo>0?(p.preco-custo)*v.qtd:null;
     var margemTxt=margem!==null?'<span class="badge '+(margem>=0?'badge-green':'badge-red')+'">'+Math.round(margem)+'%</span>':'<span style="color:var(--text3);font-size:12px">—</span>';
     var lucroTxt=lucro!==null?'<span style="font-family:monospace;color:'+(lucro>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmt(lucro)+'</span>':'<span style="color:var(--text3);font-size:12px">—</span>';
+    var eanTxt=p.ean?'<span style="font-family:monospace;font-size:12px;color:var(--text2)">'+(p.ean||'—')+'</span>':'<span style="color:var(--text3);font-size:12px">—</span>';
+    var comTxt=p.comissao>0?'<span style="background:#7c3aed;color:#fff;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700">'+p.comissao+'%</span>':'<span style="color:var(--text3)">—</span>';
     h+='<tr><td style="color:var(--text3);font-family:monospace">'+p.id+'</td>'+
       '<td class="nm">'+p.nome+'</td>'+
       '<td style="font-family:monospace;color:var(--text2)">'+( custo>0?fmt(custo):'<span style="color:var(--text3);font-size:12px">—</span>')+'</td>'+
@@ -570,7 +583,9 @@ function renderProdutos() {
       '<td><span class="badge badge-blue">'+v.qtd+'</span></td>'+
       '<td style="font-family:monospace;color:var(--green);font-weight:700">'+fmt(v.total)+'</td>'+
       '<td>'+lucroTxt+'</td>'+
-      '<td style="display:flex;gap:4px"><button class="btn-sm" onclick="editEst('+p.id+')">Estoque</button><button class="btn-sm" onclick="editPrecos('+p.id+')" style="color:var(--accent)">Preços</button></td>'+
+      '<td>'+eanTxt+' <button class="btn-sm" onclick="editEanProd('+p.id+')" title="Editar EAN">EAN</button></td>'+
+      '<td style="text-align:center">'+comTxt+' <button class="btn-sm" onclick="editPrecos('+p.id+')" style="color:var(--accent)">Preços</button></td>'+
+      '<td style="display:flex;gap:4px"><button class="btn-sm" onclick="editEst('+p.id+')">Estoque</button></td>'+
     '</tr>';
   });
   document.getElementById('tab-prods').innerHTML=h;
@@ -586,13 +601,78 @@ function editEst(id) {
 function editPrecos(id) {
   if(!checarAdm('Editar preços')) return;
   var p=null; for(var i=0;i<db.produtos.length;i++){if(db.produtos[i].id===id){p=db.produtos[i];break;}} if(!p) return;
-  var custo=prompt('Preço de CUSTO para "'+p.nome+'" (atual: '+(p.custo?p.custo.toFixed(2):'não informado')+'):', p.custo||'');
+  var custo=prompt('Preço de CUSTO para "'+p.nome+'" (R$):', p.custo||0);
   if(custo===null) return;
-  var venda=prompt('Preço de VENDA para "'+p.nome+'" (atual: '+p.preco.toFixed(2)+'):', p.preco);
+  var venda=prompt('Preço de VENDA para "'+p.nome+'" (R$):', p.preco);
   if(venda===null) return;
-  if(parseFloat(custo)>=0) p.custo=parseFloat(custo)||0;
-  if(parseFloat(venda)>0) p.preco=parseFloat(venda);
+  var com=prompt('Comissão de "'+p.nome+'" (%)\n(0 = sem comissão):', p.comissao !== undefined ? p.comissao : 0);
+  if(com===null) return;
+  p.custo=parseFloat((custo+'').replace(',','.'))||0;
+  p.preco=parseFloat((venda+'').replace(',','.'))||p.preco;
+  p.comissao=parseFloat((com+'').replace(',','.'))||0;
   saveDB(); renderProdutos();
+}
+
+function editEanProd(id) {
+  var p = db.produtos.find(function(x){ return x.id === id; });
+  if (!p) return;
+  var n = prompt('EAN do produto "' + p.nome + '":\n(deixe em branco para remover)', p.ean || '');
+  if (n === null) return;
+  var novoEan = (n || '').trim().replace(/\D/g,'');
+  if (novoEan && db.produtos.some(function(x){ return x.id !== id && x.ean && x.ean === novoEan; })) {
+    alert('⚠️ Esse EAN já está cadastrado em outro produto!');
+    return;
+  }
+  p.ean = novoEan || '';
+  saveDB();
+  renderProdutos();
+}
+
+var _eanTimer = null;
+
+function onEanInput(val) {
+  var clean = (val || '').replace(/\D/g,'');
+  if (clean.length >= 8) {
+    clearTimeout(_eanTimer);
+    _eanTimer = setTimeout(function() {
+      bipEan(clean);
+      var el = document.getElementById('l-ean');
+      if (el) { el.value = ''; el.focus(); }
+    }, 120);
+  }
+}
+
+function bipEan(codigo) {
+  var ean = (codigo || '').replace(/\D/g,'');
+  var msg = document.getElementById('ean-msg');
+  if (!ean || ean.length < 8) return;
+  if (!vSel) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '⚠️ Selecione um vendedor primeiro!'; }
+    return;
+  }
+  var prod = db.produtos.find(function(p){ return p.ean === ean; });
+  if (!prod) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '❌ EAN ' + ean + ' não cadastrado!'; }
+    setTimeout(function(){ if (msg) msg.textContent = ''; }, 3000);
+    return;
+  }
+  if (prod.est <= 0) {
+    if (msg) { msg.style.color = 'var(--amber)'; msg.textContent = '⚠️ "' + prod.nome + '" sem estoque!'; }
+    setTimeout(function(){ if (msg) msg.textContent = ''; }, 3000);
+    return;
+  }
+  var idx = carr.findIndex(function(i){ return i.id === prod.id; });
+  if (idx >= 0) {
+    carr[idx].qtd++;
+  } else {
+    carr.push({ id: prod.id, nome: prod.nome, preco: prod.preco, qtd: 1 });
+  }
+  if (msg) {
+    msg.style.color = 'var(--green)';
+    msg.textContent = '✔ ' + prod.nome + ' (+1)';
+    setTimeout(function(){ if (msg) msg.textContent = ''; }, 2500);
+  }
+  renderCarrinho();
 }
 
 function inativarVendedor(nome) {
@@ -638,14 +718,21 @@ function addProduto() {
   var custo = parseFloat(document.getElementById('np-custo').value) || 0;
   var preco = parseFloat(document.getElementById('np-preco').value) || 0;
   var est   = parseInt(document.getElementById('np-est').value) || 0;
+  var ean = (document.getElementById('np-ean').value || '').trim().replace(/\D/g,'');
+  var comissao = parseFloat(document.getElementById('np-comissao').value) || 0;
   var m = document.getElementById('np-msg');
   if (!nome || preco <= 0) { m.style.color='var(--red)'; m.textContent='Preencha nome e preço de venda.'; return; }
-  db.produtos.push({ id: db.nxt++, nome: nome, custo: custo, preco: preco, est: est });
+  if (ean && db.produtos.some(function(p){ return p.ean && p.ean === ean; })) {
+    m.style.color='var(--red)'; m.textContent='⚠️ Esse EAN já está cadastrado em outro produto!'; return;
+  }
+  db.produtos.push({ id: db.nxt++, nome: nome, custo: custo, preco: preco, est: est, ean: ean || '', comissao: comissao });
   saveDB(); m.style.color='var(--green)'; m.textContent='✔ Produto adicionado!';
   document.getElementById('np-nome').value='';
   document.getElementById('np-custo').value='';
   document.getElementById('np-preco').value='';
   document.getElementById('np-est').value='';
+  document.getElementById('np-ean').value='';
+  document.getElementById('np-comissao').value='';
   setTimeout(function(){ m.textContent=''; }, 3000);
   renderProdutos();
 }
@@ -871,8 +958,9 @@ function renderVendas() {
     });
     h += '<tr style="border-top:1px solid var(--border2)"><td colspan="3" style="padding:8px 8px;font-weight:700;color:var(--text)">Total</td>' +
       '<td style="padding:8px 8px;font-family:monospace;font-weight:700;color:var(--green);text-align:right">' + fmt(g.total) + '</td></tr></table>' +
-      '<div style="margin-top:10px;display:flex;justify-content:flex-end">' +
-        '<button class="btn btn-primary" onclick="abrirEditarGrupo(' + g.grupoId + ');event.stopPropagation()">✏️ Editar esta venda</button></div>' +
+      '<div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px">' +
+        '<button class="btn btn-primary" onclick="abrirEditarGrupo(' + g.grupoId + ');event.stopPropagation()">✏️ Editar esta venda</button>' +
+        '<button class="btn btn-secondary" onclick="imprimirComprovante(' + g.grupoId + ');event.stopPropagation()" style="font-size:12px">🖨️ Imprimir comprovante</button></div>' +
       '</div></div></div>';
   });
   container.innerHTML = h;
@@ -1098,6 +1186,47 @@ function gerarFechamento() {
       '<td '+tdr+'>'+v.qtd+'</td><td '+tdr+'>'+v.lanc+'</td><td '+tdg+'>R$ '+v.total.toFixed(2).replace('.',',')+'</td><td '+tdr+'>'+p+'%</td></tr>';
   });
   o+='<tr '+trF+'><td colspan="2" '+tdn+' style="padding:7px 10px;border-bottom:1px solid #eee;font-size:13px">TOTAL GERAL</td><td '+tdr+'>'+qG+'</td><td '+tdr+'>'+nL+'</td><td '+tdg+'>R$ '+tG.toFixed(2).replace('.',',')+'</td><td '+tdr+'>100%</td></tr></table></div>';
+  var vendasComissao = vendasFilt.filter(function(v) {
+    var prod = db.produtos.find(function(p){ return p.id === v.produtoId; });
+    return prod && prod.comissao > 0 && !v.cancelada;
+  });
+  if (vendasComissao.length > 0) {
+    var comPorVendedor = {};
+    vendasComissao.forEach(function(v) {
+      var prod = db.produtos.find(function(p){ return p.id === v.produtoId; });
+      if (!prod) return;
+      if (!comPorVendedor[v.vendedor]) {
+        comPorVendedor[v.vendedor] = { itens: [], totalComissao: 0 };
+      }
+      var valorCom = (v.total * prod.comissao) / 100;
+      comPorVendedor[v.vendedor].itens.push({
+        produto: v.produto || prod.nome,
+        qtd: v.quantidade,
+        totalVenda: v.total,
+        pct: prod.comissao,
+        comissao: valorCom
+      });
+      comPorVendedor[v.vendedor].totalComissao += valorCom;
+    });
+    o+='<div style="margin-bottom:2rem;page-break-inside:avoid">';
+    o+='<h3 style="color:#4c1d95;border-bottom:2px solid #7c3aed;padding-bottom:6px;margin-bottom:1rem">💜 Comissões a Pagar — Por Vendedor</h3>';
+    o+='<p style="font-size:12px;color:#888;margin-bottom:1rem;font-style:italic">⚠️ Documento interno — não aparece no comprovante do cliente.</p>';
+    var totalGeralCom = 0;
+    Object.keys(comPorVendedor).sort().forEach(function(nome) {
+      var cv = comPorVendedor[nome];
+      totalGeralCom += cv.totalComissao;
+      o+='<div style="margin-bottom:1.5rem">';
+      o+='<div style="background:#f5f0ff;padding:8px 12px;border-radius:6px;font-weight:700;color:#4c1d95;margin-bottom:6px">👤 ' + nome + '</div>';
+      o+='<table style="width:100%;border-collapse:collapse;font-size:13px">';
+      o+='<tr style="background:#ede9fe"><th style="padding:6px 10px;text-align:left">Produto</th><th style="padding:6px 10px;text-align:right">Qtd</th><th style="padding:6px 10px;text-align:right">Total Venda</th><th style="padding:6px 10px;text-align:right">Com.%</th><th style="padding:6px 10px;text-align:right">Valor Comissão</th></tr>';
+      cv.itens.forEach(function(it) {
+        o+='<tr style="border-bottom:1px solid #e9d5ff"><td style="padding:6px 10px">'+it.produto+'</td><td style="padding:6px 10px;text-align:right">'+it.qtd+'</td><td style="padding:6px 10px;text-align:right">R$ '+it.totalVenda.toFixed(2).replace('.',',')+'</td><td style="padding:6px 10px;text-align:right;color:#7c3aed;font-weight:700">'+it.pct+'%</td><td style="padding:6px 10px;text-align:right;font-weight:700;color:#4c1d95">R$ '+it.comissao.toFixed(2).replace('.',',')+'</td></tr>';
+      });
+      o+='<tr style="background:#f5f0ff;font-weight:700;border-top:2px solid #c4b5fd"><td colspan="4" style="padding:7px 10px;color:#4c1d95">TOTAL A PAGAR — '+nome+'</td><td style="padding:7px 10px;text-align:right;font-size:14px;color:#4c1d95">R$ '+cv.totalComissao.toFixed(2).replace('.',',')+'</td></tr>';
+      o+='</table></div>';
+    });
+    o+='<div style="background:#4c1d95;color:#fff;padding:10px 14px;border-radius:8px;font-size:15px;font-weight:700;text-align:right;margin-top:8px">💜 TOTAL GERAL DE COMISSÕES: R$ '+totalGeralCom.toFixed(2).replace('.',',')+'</div></div>';
+  }
   dets.forEach(function(v){
     var sq=v.prods.reduce(function(s,p){return s+p.qtd;},0);
     o+='<div style="margin-bottom:1.5rem"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#555;border-bottom:1.5px solid #ddd;padding-bottom:6px;margin-bottom:10px">Detalhe — '+v.nome+'<span style="float:right;color:#1a5c35;font-size:13px">R$ '+v.total.toFixed(2).replace('.',',')+'</span></div><table style="width:100%;border-collapse:collapse"><tr><th '+ths+'>Produto</th><th style="text-align:right;padding:7px 10px;font-size:11px;color:#666;text-transform:uppercase;background:#f5f5f5;border-bottom:1px solid #ddd">Preço</th><th style="text-align:right;padding:7px 10px;font-size:11px;color:#666;text-transform:uppercase;background:#f5f5f5;border-bottom:1px solid #ddd">Qtd</th><th style="text-align:right;padding:7px 10px;font-size:11px;color:#666;text-transform:uppercase;background:#f5f5f5;border-bottom:1px solid #ddd">Total</th></tr>';
@@ -1139,6 +1268,70 @@ function imprimirFechamento() {
 }
 
 /* ---- CSV & RESET ---- */
+function migrarCamposNovos() {
+  var alterado = false;
+  db.produtos.forEach(function(p) {
+    if (p.ean === undefined || p.ean === null) {
+      p.ean = '';
+      alterado = true;
+    }
+    if (p.comissao === undefined || p.comissao === null) {
+      p.comissao = 0;
+      alterado = true;
+    }
+  });
+  if (alterado) saveDB();
+}
+
+function imprimirComprovante(grupoId) {
+  var itens = db.vendas.filter(function(v) {
+    return (v.grupoId != null ? v.grupoId : v.id) === grupoId && !v.cancelada;
+  });
+  if (!itens.length) {
+    alert('Nenhum item encontrado para este comprovante.');
+    return;
+  }
+  var ref = itens[0];
+  var dataStr = ref.data ? new Date(ref.data).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+  var pgtoLabels = {
+    dinheiro: '💵 Dinheiro',
+    pix: '📲 PIX',
+    debito: '💳 Débito',
+    credito_1_6: '💳 Crédito 1–6x',
+    credito_7_10: '💳 Crédito 7–10x',
+    convenio: '🏥 Convênio'
+  };
+  var total = itens.reduce(function(s, v) { return s + v.total; }, 0);
+  var linhasItens = itens.map(function(v) {
+    var unitario = v.quantidade > 0 ? (v.total / v.quantidade) : (v.preco || 0);
+    return '<tr><td style="padding:5px 8px;border-bottom:1px solid #eee">' + (v.produto || '—') + '</td>' +
+      '<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center">' + v.quantidade + '</td>' +
+      '<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">R$ ' + unitario.toFixed(2).replace('.', ',') + '</td>' +
+      '<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600">R$ ' + v.total.toFixed(2).replace('.', ',') + '</td></tr>';
+  }).join('');
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head>' +
+    '<meta charset="UTF-8"><title>Comprovante #' + grupoId + '</title>' +
+    '<style>body{font-family:Arial,sans-serif;max-width:380px;margin:20px auto;padding:16px;font-size:13px;color:#222}table{width:100%;border-collapse:collapse}th{background:#f0f0f0;padding:5px 8px;text-align:left;font-size:12px}.total-bar{display:flex;justify-content:space-between;background:#e53e3e;color:#fff;padding:10px 12px;border-radius:6px;font-size:16px;font-weight:700;margin-top:12px}.info{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}.divider{border:none;border-top:1px dashed #ccc;margin:10px 0}@media print{body{max-width:100%;margin:0;padding:8px}}</style></head><body>' +
+    '<div style="text-align:center;margin-bottom:12px">' +
+    '<img src="' + LOGO_PATH + '" alt="' + NOME_FARMACIA + '" style="height:48px;width:auto" onerror="this.style.display=\'none\'">' +
+    '<div style="font-size:15px;font-weight:700;color:#e53e3e;margin-top:4px">' + NOME_FARMACIA + '</div></div>' +
+    '<hr class="divider">' +
+    '<div class="info"><span>Venda nº</span><strong>#' + grupoId + '</strong></div>' +
+    '<div class="info"><span>Data</span><span>' + dataStr + '</span></div>' +
+    '<div class="info"><span>Vendedor</span><strong>' + ref.vendedor + '</strong></div>' +
+    '<div class="info"><span>Pagamento</span><span>' + (pgtoLabels[ref.pagamento] || ref.pagamento || '—') + '</span></div>' +
+    '<hr class="divider">' +
+    '<table><tr><th>Produto</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Subtotal</th></tr>' + linhasItens + '</table>' +
+    '<div class="total-bar"><span>TOTAL</span><span>R$ ' + total.toFixed(2).replace('.', ',') + '</span></div>' +
+    '<hr class="divider">' +
+    '<div style="text-align:center;font-size:11px;color:#888">Obrigado pela preferência! • ' + NOME_FARMACIA + '</div>' +
+    '</body></html>';
+  var janela = window.open('', '_blank', 'width=420,height=620');
+  if (!janela) { alert('Pop-up bloqueado! Permita pop-ups para este site e tente novamente.'); return; }
+  janela.document.write(html);
+  janela.document.close();
+  setTimeout(function() { janela.print(); }, 600);
+}
 
 function resetar() {
   if (!checarAdm('Zerar período')) return;
@@ -1211,4 +1404,5 @@ function checarAdm(acao) {
 /* ---- INIT ---- */
 window.addEventListener('load', function() {
   db = loadDB();
+  migrarCamposNovos();
 });
