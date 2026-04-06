@@ -47,14 +47,16 @@ function pgtoBadgeClass(k) {
 
 /* ========== SHEETS INTEGRATION (via Apps Script) ========== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
+var CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 var sheetSyncing = false;
 var sheetLastSync = null;
 
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
     showSyncStatus('Conectando ao banco de dados...', 'amber');
+    var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
+    xhr.open('GET', url, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.timeout = 15000;
     xhr.onload = function() {
@@ -114,8 +116,10 @@ function saveToSheet() {
       nxt: db.nxt
     });
     var encoded = btoa(unescape(encodeURIComponent(payload)));
+    var targetUrl = APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded);
+    var url = CORS_PROXY + encodeURIComponent(targetUrl);
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded), true);
+    xhr.open('GET', url, true);
     xhr.timeout = 15000;
     xhr.onload = function() {
       console.log('📤 Resposta ao salvar (raw):', xhr.responseText);
@@ -197,8 +201,9 @@ function syncFromSheet() {
 
 function syncFromLogin() {
   showSyncStatus('Conectando ao banco...', 'amber');
+  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', APPS_SCRIPT_URL + '?action=read', true);
+  xhr.open('GET', url, true);
   xhr.timeout = 15000;
   xhr.onload = function() {
     console.log('🔄 syncFromLogin raw:', xhr.responseText);
