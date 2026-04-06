@@ -60,11 +60,8 @@ function loadFromSheet() {
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.timeout = 15000;
     xhr.onload = function() {
-      console.log('📥 Status:', xhr.status);
-      console.log('📥 Resposta do banco (raw):', xhr.responseText);
       try {
         var data = JSON.parse(xhr.responseText);
-        console.log('📥 Resposta do banco (parsed):', data);
         if (data.error) {
           showSyncStatus('Não foi possível conectar ao banco. Tente novamente.', 'red');
           resolve(false);
@@ -75,9 +72,7 @@ function loadFromSheet() {
           resolve(false);
           return;
         }
-        console.log('📥 Campos recebidos:', Object.keys(data));
         if (data.vendas || data.vendedores || data.produtos) {
-          console.log('📥 Dados válidos! carregando...');
           db.vendedores = data.vendedores || db.vendedores;
           db.produtos = data.produtos || db.produtos;
           db.vendas = data.vendas || [];
@@ -125,7 +120,6 @@ function saveToSheet() {
     xhr.open('GET', url, true);
     xhr.timeout = 15000;
     xhr.onload = function() {
-      console.log('📤 Resposta ao salvar (raw):', xhr.responseText);
       sheetSyncing = false;
       try {
         var data = JSON.parse(xhr.responseText);
@@ -209,10 +203,8 @@ function syncFromLogin() {
   xhr.open('GET', url, true);
   xhr.timeout = 15000;
   xhr.onload = function() {
-    console.log('🔄 syncFromLogin raw:', xhr.responseText);
     try {
       var data = JSON.parse(xhr.responseText);
-      console.log('🔄 syncFromLogin parsed:', data);
       if (data.error) {
         showSyncStatus('Não foi possível conectar. Tente novamente.', 'red');
         return;
