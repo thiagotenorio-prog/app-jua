@@ -80,14 +80,25 @@ function loadFromSheet() {
           return;
         }
         if (data.vendas || data.vendedores || data.produtos) {
-          db.vendedores = data.vendedores || db.vendedores;
-          db.produtos = data.produtos || db.produtos;
-          db.vendas = data.vendas || [];
-          db.nxt = data.nxt || db.nxt;
-          dbLastUpdate = data.lastUpdate || null;
-          localStorage.setItem('farm_db', JSON.stringify(db));
-          localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
-          showSyncStatus('Dados carregados do banco!', 'green');
+          var serverTs = data.lastUpdate || null;
+          var localTs  = localStorage.getItem('farm_db_timestamp') || null;
+          // Só sobrescreve local se o servidor for mais recente (ou não houver dado local)
+          var serverIsNewer = !localTs || !serverTs || serverTs >= localTs;
+          if (serverIsNewer) {
+            db.vendedores = data.vendedores || db.vendedores;
+            db.produtos   = data.produtos   || db.produtos;
+            db.vendas     = data.vendas     || [];
+            db.nxt        = data.nxt        || db.nxt;
+            dbLastUpdate  = serverTs;
+            localStorage.setItem('farm_db', JSON.stringify(db));
+            localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
+            showSyncStatus('Dados carregados do banco!', 'green');
+          } else {
+            // Local é mais recente — preserva local e sobe para o servidor
+            dbLastUpdate = localTs;
+            showSyncStatus('Dados locais mais recentes — sincronizando...', 'amber');
+            setTimeout(function() { saveToSheet(); }, 500);
+          }
           sheetLastSync = new Date();
           resolve(true);
           return;
@@ -155,9 +166,9 @@ function saveToSheet() {
           resolve(false);
         }
       } catch(e) {
-        showSyncStatus('Dados sincronizados!', 'green');
-        sheetLastSync = new Date();
-        resolve(true);
+        // Resposta não era JSON — o save falhou de verdade
+        showSyncStatus('Falha ao salvar no banco. Tente novamente.', 'red');
+        resolve(false);
       }
     };
     xhr.onerror = function() {
