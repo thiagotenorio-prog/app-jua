@@ -1,7 +1,0 @@
-{
-  "build": {
-    "env": {
-      "ENABLE_V1_FUNCTIONS": "1"
-    }
-  }
-}
