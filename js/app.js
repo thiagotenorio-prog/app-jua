@@ -334,7 +334,7 @@ function loadDB() {
     }
   } catch(e) {}
   try { var d2 = localStorage.getItem('farm_db'); if (d2) return JSON.parse(d2); } catch(e) {}
-  return { vendedores: VENDS.map(function(n){return{nome:n};}), produtos: JSON.parse(JSON.stringify(PRODS)), vendas: [], nxt: 1000 };
+  return { vendedores: VENDS.map(function(n){return{nome:n};}), produtos: JSON.parse(JSON.stringify(PRODS)), vendas: [], nxt: 1000, deletedProdutos: [] };
 }
 
 function saveDB() {
@@ -927,6 +927,8 @@ function excluirProduto(id) {
   if(temVendas){alert('Não é possível excluir um produto que possui vendas registradas.\nUse "Inativar" para ocultá-lo do lançamento.');return;}
   var p=null; for(var i=0;i<db.produtos.length;i++){if(db.produtos[i].id===id){p=db.produtos[i];break;}} if(!p) return;
   if(!confirm('Excluir permanentemente "'+p.nome+'"?\nEssa ação não pode ser desfeita.')) return;
+  if(!db.deletedProdutos) db.deletedProdutos=[];
+  if(db.deletedProdutos.indexOf(id)===-1) db.deletedProdutos.push(id);
   db.produtos=db.produtos.filter(function(x){return x.id!==id;});
   saveDB(); renderProdutos();
 }
@@ -1478,6 +1480,10 @@ function migrarCamposNovos() {
       alterado = true;
     }
   });
+  if (!db.deletedProdutos) {
+    db.deletedProdutos = [];
+    alterado = true;
+  }
   if (alterado) saveDB();
 }
 

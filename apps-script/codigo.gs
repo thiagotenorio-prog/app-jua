@@ -187,15 +187,22 @@ function saveAll(data, forceWrite) {
           });
         }
         if (serverData.produtos && data.produtos) {
+          var deletedIds = data.deletedProdutos || [];
           var localProdutosIds = data.produtos.map(function(p) { return p.id; });
           serverData.produtos.forEach(function(p) {
-            if (localProdutosIds.indexOf(p.id) === -1) data.produtos.push(p);
+            if (localProdutosIds.indexOf(p.id) === -1 && deletedIds.indexOf(p.id) === -1) data.produtos.push(p);
           });
         }
         if (serverData.vendedores && data.vendedores) {
           var localVendedoresNomes = data.vendedores.map(function(v) { return v.nome; });
           serverData.vendedores.forEach(function(v) {
             if (localVendedoresNomes.indexOf(v.nome) === -1) data.vendedores.push(v);
+          });
+        }
+        if (!data.deletedProdutos) data.deletedProdutos = [];
+        if (serverData.deletedProdutos) {
+          serverData.deletedProdutos.forEach(function(id) {
+            if (data.deletedProdutos.indexOf(id) === -1) data.deletedProdutos.push(id);
           });
         }
       }
@@ -232,9 +239,14 @@ function mergeData(serverData, clientData) {
   if (clientData && clientData.vendedores) clientData.vendedores.forEach(function(v) { vendedorMap[v.nome] = v; });
   merged.vendedores = Object.values(vendedorMap);
 
+  var deletedProdutosSet = {};
+  var allDeleted = (serverData.deletedProdutos || []).concat(clientData.deletedProdutos || []);
+  allDeleted.forEach(function(id) { deletedProdutosSet[id] = true; });
+  merged.deletedProdutos = allDeleted.filter(function(id, i) { return allDeleted.indexOf(id) === i; });
+
   var produtoMap = {};
-  if (serverData && serverData.produtos) serverData.produtos.forEach(function(p) { produtoMap[p.id] = p; });
-  if (clientData && clientData.produtos) clientData.produtos.forEach(function(p) { produtoMap[p.id] = p; });
+  if (serverData && serverData.produtos) serverData.produtos.forEach(function(p) { if (!deletedProdutosSet[p.id]) produtoMap[p.id] = p; });
+  if (clientData && clientData.produtos) clientData.produtos.forEach(function(p) { if (!deletedProdutosSet[p.id]) produtoMap[p.id] = p; });
   merged.produtos = Object.values(produtoMap);
 
   var vendaMap = {};
