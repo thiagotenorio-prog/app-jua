@@ -512,7 +512,7 @@ function atualizarPgtoUI() {
 
 function filtrarProds() {
   var b = document.getElementById('l-busca').value.toLowerCase();
-  var lista = db.produtos.filter(function(p){return p.est>0 && p.nome.toLowerCase().indexOf(b)>=0;}).slice(0,25);
+  var lista = db.produtos.filter(function(p){return p.ativo!==false && p.est>0 && p.nome.toLowerCase().indexOf(b)>=0;}).slice(0,25);
   var h = '';
   lista.forEach(function(p){
     var q=0; for(var i=0;i<carr.length;i++){if(carr[i].id===p.id){q=carr[i].qtd;break;}}
@@ -631,11 +631,16 @@ function detV(nome) {
 /* ---- PRODUTOS ---- */
 function renderProdutos() {
   var b=(document.getElementById('p-busca')?document.getElementById('p-busca').value:'').toLowerCase();
-  var lista=db.produtos.filter(function(p){return p.nome.toLowerCase().indexOf(b)>=0;});
+  var lista=db.produtos.filter(function(p){return p.nome.toLowerCase().indexOf(b)>=0;}).sort(function(a,b){
+    var aa=a.ativo!==false, bb=b.ativo!==false;
+    if(aa!==bb) return aa?-1:1;
+    return a.nome.localeCompare(b.nome);
+  });
   var vp={};
   db.vendas.filter(function(v){return !v.cancelada;}).forEach(function(v){if(!vp[v.produtoId])vp[v.produtoId]={qtd:0,total:0};vp[v.produtoId].qtd+=v.quantidade;vp[v.produtoId].total+=v.total;});
-  var h='<tr><th>#</th><th>Produto</th><th>Custo</th><th>Venda</th><th>Margem</th><th>Estoque</th><th>Vendido</th><th>Receita</th><th>Lucro</th><th>EAN</th><th style="text-align:center">Com.%</th><th></th></tr>';
+  var h='<tr><th>#</th><th>Produto</th><th>Status</th><th>Custo</th><th>Venda</th><th>Margem</th><th>Estoque</th><th>Vendido</th><th>Receita</th><th>Lucro</th><th>EAN</th><th style="text-align:center">Com.%</th><th></th></tr>';
   lista.forEach(function(p){
+    var ativo=p.ativo!==false;
     var v=vp[p.id]||{qtd:0,total:0};
     var bg=p.est<=0?'badge-red':p.est<=5?'badge-amber':'badge-green';
     var custo=p.custo||0;
@@ -645,19 +650,32 @@ function renderProdutos() {
     var lucroTxt=lucro!==null?'<span style="font-family:monospace;color:'+(lucro>=0?'var(--green)':'var(--red)')+';font-weight:700">'+fmt(lucro)+'</span>':'<span style="color:var(--text3);font-size:12px">—</span>';
     var eanTxt=p.ean?'<span style="font-family:monospace;font-size:12px;color:var(--text2)">'+(p.ean||'—')+'</span>':'<span style="color:var(--text3);font-size:12px">—</span>';
     var comTxt=p.comissao>0?'<span style="background:#7c3aed;color:#fff;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700">'+p.comissao+'%</span>':'<span style="color:var(--text3)">—</span>';
-    h+='<tr><td style="color:var(--text3);font-family:monospace">'+p.id+'</td>'+
-      '<td class="nm">'+p.nome+'</td>'+
-      '<td style="font-family:monospace;color:var(--text2)">'+( custo>0?fmt(custo):'<span style="color:var(--text3);font-size:12px">—</span>')+'</td>'+
-      '<td style="font-family:monospace">'+fmt(p.preco)+'</td>'+
-      '<td>'+margemTxt+'</td>'+
-      '<td><span class="badge '+bg+'">'+p.est+'</span></td>'+
-      '<td><span class="badge badge-blue">'+v.qtd+'</span></td>'+
-      '<td style="font-family:monospace;color:var(--green);font-weight:700">'+fmt(v.total)+'</td>'+
-      '<td>'+lucroTxt+'</td>'+
-      '<td>'+eanTxt+'</td>'+
-      '<td style="text-align:center">'+comTxt+'</td>'+
-      '<td style="display:flex;gap:4px"><button class="btn-sm" onclick="editProd('+p.id+')">✏️ Editar</button></td>'+
-    '</tr>';
+    var statusBadge=ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-red">Inativo</span>';
+    var btnInativar=ativo
+      ?'<button class="btn-sm" onclick="inativarProduto('+p.id+')" style="color:var(--amber)">Inativar</button>'
+      :'<button class="btn-sm" onclick="reativarProduto('+p.id+')" style="color:var(--green)">Reativar</button>';
+    var temVendas=db.vendas.some(function(vv){return vv.produtoId===p.id;});
+    var btnExcluir=!temVendas
+      ?'<button class="btn-sm" onclick="excluirProduto('+p.id+')" style="color:var(--red)">Excluir</button>'
+      :'<span style="font-size:11px;color:var(--text3)">Excluir indisponível</span>';
+    h+='<tr style="'+(ativo?'':'opacity:.6')+'">'
+      +'<td style="color:var(--text3);font-family:monospace">'+p.id+'</td>'
+      +'<td class="nm">'+p.nome+'</td>'
+      +'<td>'+statusBadge+'</td>'
+      +'<td style="font-family:monospace;color:var(--text2)">'+(custo>0?fmt(custo):'<span style="color:var(--text3);font-size:12px">—</span>')+'</td>'
+      +'<td style="font-family:monospace">'+fmt(p.preco)+'</td>'
+      +'<td>'+margemTxt+'</td>'
+      +'<td><span class="badge '+bg+'">'+p.est+'</span></td>'
+      +'<td><span class="badge badge-blue">'+v.qtd+'</span></td>'
+      +'<td style="font-family:monospace;color:var(--green);font-weight:700">'+fmt(v.total)+'</td>'
+      +'<td>'+lucroTxt+'</td>'
+      +'<td>'+eanTxt+'</td>'
+      +'<td style="text-align:center">'+comTxt+'</td>'
+      +'<td style="display:flex;gap:4px;flex-wrap:wrap">'
+        +'<button class="btn-sm" onclick="editProd('+p.id+')">✏️ Editar</button>'
+        +btnInativar+btnExcluir
+      +'</td>'
+    +'</tr>';
   });
   document.getElementById('tab-prods').innerHTML=h;
 }
@@ -802,6 +820,11 @@ function bipEan(codigo) {
     setTimeout(function(){ if (msg) msg.textContent = ''; }, 3000);
     return;
   }
+  if (prod.ativo === false) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = '❌ "' + prod.nome + '" está inativo!'; }
+    setTimeout(function(){ if (msg) msg.textContent = ''; }, 3000);
+    return;
+  }
   if (prod.est <= 0) {
     if (msg) { msg.style.color = 'var(--amber)'; msg.textContent = '⚠️ "' + prod.nome + '" sem estoque!'; }
     setTimeout(function(){ if (msg) msg.textContent = ''; }, 3000);
@@ -871,7 +894,7 @@ function addProduto() {
   if (ean && db.produtos.some(function(p){ return p.ean && p.ean === ean; })) {
     m.style.color='var(--red)'; m.textContent='⚠️ Esse EAN já está cadastrado em outro produto!'; return;
   }
-  db.produtos.push({ id: db.nxt++, nome: nome, custo: custo, preco: preco, est: est, ean: ean || '', comissao: comissao });
+  db.produtos.push({ id: db.nxt++, nome: nome, custo: custo, preco: preco, est: est, ean: ean || '', comissao: comissao, ativo: true });
   saveDB(); m.style.color='var(--green)'; m.textContent='✔ Produto adicionado!';
   document.getElementById('np-nome').value='';
   document.getElementById('np-custo').value='';
@@ -881,6 +904,31 @@ function addProduto() {
   document.getElementById('np-comissao').value='';
   setTimeout(function(){ m.textContent=''; }, 3000);
   renderProdutos();
+}
+
+function inativarProduto(id) {
+  if(!checarAdm('Inativar produto')) return;
+  var p=null; for(var i=0;i<db.produtos.length;i++){if(db.produtos[i].id===id){p=db.produtos[i];break;}} if(!p) return;
+  if(!confirm('Inativar "'+p.nome+'"?\nEle não aparecerá na tela de lançamento e não poderá ser vendido.')) return;
+  p.ativo=false;
+  saveDB(); renderProdutos();
+}
+
+function reativarProduto(id) {
+  if(!checarAdm('Reativar produto')) return;
+  var p=null; for(var i=0;i<db.produtos.length;i++){if(db.produtos[i].id===id){p=db.produtos[i];break;}} if(!p) return;
+  p.ativo=true;
+  saveDB(); renderProdutos();
+}
+
+function excluirProduto(id) {
+  if(!checarAdm('Excluir produto')) return;
+  var temVendas=db.vendas.some(function(v){return v.produtoId===id;});
+  if(temVendas){alert('Não é possível excluir um produto que possui vendas registradas.\nUse "Inativar" para ocultá-lo do lançamento.');return;}
+  var p=null; for(var i=0;i<db.produtos.length;i++){if(db.produtos[i].id===id){p=db.produtos[i];break;}} if(!p) return;
+  if(!confirm('Excluir permanentemente "'+p.nome+'"?\nEssa ação não pode ser desfeita.')) return;
+  db.produtos=db.produtos.filter(function(x){return x.id!==id;});
+  saveDB(); renderProdutos();
 }
 
 /* ---- HISTORICO ---- */
@@ -1423,6 +1471,10 @@ function migrarCamposNovos() {
     }
     if (p.comissao === undefined || p.comissao === null) {
       p.comissao = 0;
+      alterado = true;
+    }
+    if (p.ativo === undefined || p.ativo === null) {
+      p.ativo = true;
       alterado = true;
     }
   });
