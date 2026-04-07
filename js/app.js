@@ -213,7 +213,7 @@ function syncFromSheet() {
 
 function syncLeituraSilenciosa() {
   if (sheetSyncing) return;
-  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
+  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read') + CORS_API_KEY;
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 8000;
@@ -260,7 +260,7 @@ function pararSyncLeitura() {
 
 function syncFromLogin() {
   showSyncStatus('Conectando ao banco...', 'amber');
-  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
+  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read') + CORS_API_KEY;
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 15000;
