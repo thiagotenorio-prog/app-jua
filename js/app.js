@@ -124,9 +124,8 @@ function saveToSheet() {
       nxt: db.nxt,
       lastUpdate: dbLastUpdate || new Date().toISOString()
     });
-    var encoded = btoa(unescape(encodeURIComponent(payload)));
-    var targetUrl = APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded);
-    var url = CORS_PROXY + encodeURIComponent(targetUrl) + CORS_API_KEY;
+    var encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(payload))));
+    var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=write&data=' + encoded) + CORS_API_KEY;
     console.log('📤 Enviando para o banco...');
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
