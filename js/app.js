@@ -134,11 +134,12 @@ function saveToSheet() {
       nxt: db.nxt,
       lastUpdate: dbLastUpdate || new Date().toISOString()
     });
-    var encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(payload))));
-    var url = PROXY_URL + encodeURIComponent(APPS_SCRIPT_URL + '?action=write&data=' + encoded);
+    // POST com JSON no body — evita limite de tamanho de URL (GET/base64 dava 400)
+    var url = PROXY_URL + encodeURIComponent(APPS_SCRIPT_URL);
     console.log('📤 Enviando para o banco...');
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
     xhr.timeout = 25000;
     xhr.onload = function() {
       console.log('📤 Resposta status:', xhr.status);
@@ -181,7 +182,7 @@ function saveToSheet() {
       showSyncStatus('Conexão lenta. Tente novamente.', 'red');
       resolve(false);
     };
-    xhr.send();
+    xhr.send(payload);
   });
 }
 
