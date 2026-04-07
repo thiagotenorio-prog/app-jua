@@ -53,7 +53,7 @@ function pgtoBadgeClass(k) {
 
 /* ========== SHEETS INTEGRATION (via Apps Script) ========== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
-var CORS_PROXY = 'https://corsproxy.io/';
+var CORS_PROXY = '';
 var sheetSyncing = false;
 var sheetLastSync = null;
 var dbLastUpdate = null;
@@ -62,7 +62,7 @@ var syncLeituraInterval = null;
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
     showSyncStatus('Conectando ao banco de dados...', 'amber');
-    var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
+    var url = '/api/proxy?action=read';
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -125,8 +125,7 @@ function saveToSheet() {
       lastUpdate: dbLastUpdate || new Date().toISOString()
     });
     var encoded = btoa(unescape(encodeURIComponent(payload)));
-    var targetUrl = APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded);
-    var url = CORS_PROXY + encodeURIComponent(targetUrl);
+    var url = '/api/proxy?action=write&data=' + encodeURIComponent(encoded);
     console.log('📤 Enviando para o banco...');
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
@@ -214,7 +213,7 @@ function syncFromSheet() {
 
 function syncLeituraSilenciosa() {
   if (sheetSyncing) return;
-  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
+  var url = '/api/proxy?action=read';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 8000;
@@ -261,7 +260,7 @@ function pararSyncLeitura() {
 
 function syncFromLogin() {
   showSyncStatus('Conectando ao banco...', 'amber');
-  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
+  var url = '/api/proxy?action=read';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 15000;
