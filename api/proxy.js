@@ -26,6 +26,41 @@ function makeRequest(url, callback, redirectCount = 0) {
   request.end();
 }
 
+function makePostRequest(url, bodyData, callback, redirectCount = 0) {
+  if (redirectCount > 5) {
+    callback({ error: 'Too many redirects' });
+    return;
+  }
+
+  const postData = JSON.stringify(bodyData);
+  
+  const request = https.request(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+  }, (response) => {
+    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+      makePostRequest(response.headers.location, bodyData, callback, redirectCount + 1);
+      return;
+    }
+    
+    let body = '';
+    response.on('data', (chunk) => body += chunk);
+    response.on('end', () => {
+      callback(null, body, response.statusCode);
+    });
+  });
+
+  request.on('error', (err) => {
+    callback(err);
+  });
+
+  request.write(postData);
+  request.end();
+}
+
 module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -38,10 +73,33 @@ module.exports = (req, res) => {
 
   const url = new URL(req.url, 'https://vendasinternas.com.br');
   const action = url.searchParams.get('action') || 'read';
-  const data = url.searchParams.get('data') || '';
+  const dataParam = url.searchParams.get('data') || '';
   
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
-  const targetUrl = `${GAS_URL}?action=${action}` + (data ? `&data=${data}` : '');
+  
+  if (req.method === 'POST' && action === 'write') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const jsonData = JSON.parse(body);
+        const targetUrl = `${GAS_URL}?action=write`;
+        
+        makePostRequest(targetUrl, jsonData, (err, responseBody, statusCode) => {
+          if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+          }
+          res.status(statusCode || 200).send(responseBody);
+        });
+      } catch (e) {
+        res.status(400).json({ error: 'Invalid JSON' });
+      }
+    });
+    return;
+  }
+  
+  const targetUrl = `${GAS_URL}?action=${action}` + (dataParam ? `&data=${dataParam}` : '');
 
   makeRequest(targetUrl, (err, body, statusCode) => {
     if (err) {

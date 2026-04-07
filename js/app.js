@@ -125,10 +125,11 @@ function saveToSheet() {
       lastUpdate: dbLastUpdate || new Date().toISOString()
     });
     var encoded = btoa(unescape(encodeURIComponent(payload)));
-    var url = '/api/proxy?action=write&data=' + encodeURIComponent(encoded);
+    var url = '/api/proxy?action=write';
     console.log('📤 Enviando para o banco...');
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.timeout = 25000;
     xhr.onload = function() {
       console.log('📤 Resposta status:', xhr.status);
