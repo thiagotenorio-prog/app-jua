@@ -53,8 +53,7 @@ function pgtoBadgeClass(k) {
 
 /* ========== SHEETS INTEGRATION (via Apps Script) ========== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
-var CORS_PROXY = 'https://corsproxy.io/?url=';
-var CORS_API_KEY = '&api_key=9d5e9184';
+var PROXY_URL = '/api/proxy?url=';
 var sheetSyncing = false;
 var sheetLastSync = null;
 var dbLastUpdate = null;
@@ -63,7 +62,7 @@ var syncLeituraInterval = null;
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
     showSyncStatus('Conectando ao banco de dados...', 'amber');
-    var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read') + CORS_API_KEY;
+    var url = PROXY_URL + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.timeout = 15000;
@@ -125,7 +124,7 @@ function saveToSheet() {
       lastUpdate: dbLastUpdate || new Date().toISOString()
     });
     var encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(payload))));
-    var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=write&data=' + encoded) + CORS_API_KEY;
+    var url = PROXY_URL + encodeURIComponent(APPS_SCRIPT_URL + '?action=write&data=' + encoded);
     console.log('📤 Enviando para o banco...');
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
@@ -213,7 +212,7 @@ function syncFromSheet() {
 
 function syncLeituraSilenciosa() {
   if (sheetSyncing) return;
-  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read') + CORS_API_KEY;
+  var url = PROXY_URL + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 8000;
@@ -260,7 +259,7 @@ function pararSyncLeitura() {
 
 function syncFromLogin() {
   showSyncStatus('Conectando ao banco...', 'amber');
-  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read') + CORS_API_KEY;
+  var url = PROXY_URL + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 15000;
