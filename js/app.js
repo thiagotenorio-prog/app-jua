@@ -642,9 +642,9 @@ function renderProdutos() {
       '<td><span class="badge badge-blue">'+v.qtd+'</span></td>'+
       '<td style="font-family:monospace;color:var(--green);font-weight:700">'+fmt(v.total)+'</td>'+
       '<td>'+lucroTxt+'</td>'+
-      '<td>'+eanTxt+' <button class="btn-sm" onclick="editEanProd('+p.id+')" title="Editar EAN">EAN</button></td>'+
-      '<td style="text-align:center">'+comTxt+' <button class="btn-sm" onclick="editPrecos('+p.id+')" style="color:var(--accent)">Preços</button></td>'+
-      '<td style="display:flex;gap:4px"><button class="btn-sm" onclick="editEst('+p.id+')">Estoque</button></td>'+
+      '<td>'+eanTxt+'</td>'+
+      '<td style="text-align:center">'+comTxt+'</td>'+
+      '<td style="display:flex;gap:4px"><button class="btn-sm" onclick="editProd('+p.id+')">✏️ Editar</button></td>'+
     '</tr>';
   });
   document.getElementById('tab-prods').innerHTML=h;
@@ -685,6 +685,82 @@ function editEanProd(id) {
   p.ean = novoEan || '';
   saveDB();
   renderProdutos();
+}
+
+function editProd(id) {
+  if (!checarAdm('Editar produto')) return;
+  var p = null;
+  for (var i = 0; i < db.produtos.length; i++) {
+    if (db.produtos[i].id === id) { p = db.produtos[i]; break; }
+  }
+  if (!p) return;
+  
+  window._produtoEditando = p;
+  
+  document.getElementById('modal-prod-body').innerHTML = 
+    '<div class="form-grid">' +
+      '<div class="field" style="grid-column:span 2">' +
+        '<label>Nome do produto</label>' +
+        '<input id="ep-nome" value="' + p.nome.replace(/"/g, '&quot;') + '">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Preço de custo (R$)</label>' +
+        '<input id="ep-custo" type="number" step="0.01" value="' + (p.custo || 0) + '">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Preço de venda (R$)</label>' +
+        '<input id="ep-preco" type="number" step="0.01" value="' + p.preco + '">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Estoque</label>' +
+        '<input id="ep-est" type="number" value="' + (p.est || 0) + '">' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>Comissão (%)</label>' +
+        '<input id="ep-comissao" type="number" step="0.5" min="0" max="100" value="' + (p.comissao || 0) + '">' +
+      '</div>' +
+      '<div class="field" style="grid-column:span 2">' +
+        '<label>EAN / Código de barras</label>' +
+        '<input id="ep-ean" value="' + (p.ean || '') + '" placeholder="7891234567890" maxlength="14">' +
+      '</div>' +
+    '</div>';
+  
+  document.getElementById('modal-editar-prod').classList.add('open');
+}
+
+function fecharModalEditProd() {
+  document.getElementById('modal-editar-prod').classList.remove('open');
+  window._produtoEditando = null;
+}
+
+function salvarEditProd() {
+  var p = window._produtoEditando;
+  if (!p) return;
+  
+  var nome = document.getElementById('ep-nome').value.trim();
+  var custo = parseFloat((document.getElementById('ep-custo').value || '0').replace(',', '.'));
+  var preco = parseFloat((document.getElementById('ep-preco').value || '0').replace(',', '.'));
+  var est = parseInt(document.getElementById('ep-est').value) || 0;
+  var comissao = parseFloat((document.getElementById('ep-comissao').value || '0').replace(',', '.'));
+  var ean = (document.getElementById('ep-ean').value || '').trim().replace(/\D/g, '');
+  
+  if (!nome) { alert('Nome é obrigatório!'); return; }
+  
+  if (ean && db.produtos.some(function(x) { return x.id !== p.id && x.ean === ean; })) {
+    alert('⚠️ EAN já cadastrado em outro produto!');
+    return;
+  }
+  
+  p.nome = nome;
+  p.custo = custo;
+  p.preco = preco;
+  p.est = est;
+  p.comissao = comissao;
+  p.ean = ean || '';
+  
+  saveDB();
+  renderProdutos();
+  fecharModalEditProd();
 }
 
 var _eanTimer = null;
