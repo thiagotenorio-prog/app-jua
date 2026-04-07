@@ -405,7 +405,6 @@ function enterApp(metodo) {
   aplicarPermissoes();
   renderPainel();
   document.getElementById('btn-sync').style.display = '';
-  document.getElementById('btn-sheet').style.display = isAdm() ? '' : 'none';
   showSyncStatus('Conectando ao banco de dados...', 'amber');
   loadFromSheet().then(function(ok) {
     migrarCamposNovos();
@@ -1508,7 +1507,6 @@ function fazerLogout() {
   document.getElementById('campo-senha').style.display = 'none';
   document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('btn-sync').style.display = 'none';
-  document.getElementById('btn-sheet').style.display = 'none';
   pararSyncLeitura();
 }
 
@@ -1522,10 +1520,8 @@ function aplicarPermissoes() {
     badge.style.color = adm ? 'var(--amber)' : 'var(--accent)';
     badge.style.borderColor = adm ? 'rgba(251,191,36,.5)' : 'rgba(79,142,247,.5)';
   }
-  var allButtons = ['btn-sync','btn-sheet'];
-  allButtons.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=''; });
-  var zerar = document.getElementById('btn-zerar');
-  if(zerar) zerar.style.display = adm ? '' : 'none';
+  var el = document.getElementById('btn-sync');
+  if (el) el.style.display = '';
   document.querySelectorAll('.tab').forEach(function(t){
     if(t.textContent.indexOf('Fechamento')>=0 || t.textContent.indexOf('Produtos')>=0 || t.textContent.indexOf('Vendedores')>=0)
       t.style.display = adm ? '' : 'none';
