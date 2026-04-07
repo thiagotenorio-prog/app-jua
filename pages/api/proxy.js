@@ -1,5 +1,3 @@
-const https = require('https');
-
 module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -17,6 +15,7 @@ module.exports = (req, res) => {
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
   const targetUrl = `${GAS_URL}?action=${action}` + (data ? `&data=${data}` : '');
 
+  const https = require('https');
   const request = https.get(targetUrl, (response) => {
     let body = '';
     response.on('data', (chunk) => body += chunk);

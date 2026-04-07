@@ -62,7 +62,7 @@ var syncLeituraInterval = null;
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
     showSyncStatus('Conectando ao banco de dados...', 'amber');
-    var url = '/api.js?action=read';
+    var url = '/api/proxy?action=read';
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -213,7 +213,7 @@ function syncFromSheet() {
 
 function syncLeituraSilenciosa() {
   if (sheetSyncing) return;
-  var url = '/api.js?action=read';
+  var url = '/api/proxy?action=read';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 8000;
@@ -260,7 +260,7 @@ function pararSyncLeitura() {
 
 function syncFromLogin() {
   showSyncStatus('Conectando ao banco...', 'amber');
-  var url = '/api.js?action=read';
+  var url = '/api/proxy?action=read';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 15000;
