@@ -56,6 +56,8 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1I
 var CORS_PROXY = 'https://cors.eu.org/';
 var sheetSyncing = false;
 var sheetLastSync = null;
+var dbLastUpdate = null;
+var syncLeituraInterval = null;
 
 function loadFromSheet() {
   return new Promise(function(resolve, reject) {
@@ -83,7 +85,9 @@ function loadFromSheet() {
           db.produtos = data.produtos || db.produtos;
           db.vendas = data.vendas || [];
           db.nxt = data.nxt || db.nxt;
+          dbLastUpdate = data.lastUpdate || null;
           localStorage.setItem('farm_db', JSON.stringify(db));
+          localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
           showSyncStatus('Dados carregados do banco!', 'green');
           sheetLastSync = new Date();
           resolve(true);
@@ -117,7 +121,8 @@ function saveToSheet() {
       vendedores: db.vendedores,
       produtos: db.produtos,
       vendas: db.vendas,
-      nxt: db.nxt
+      nxt: db.nxt,
+      lastUpdate: dbLastUpdate || new Date().toISOString()
     });
     var encoded = btoa(unescape(encodeURIComponent(payload)));
     var targetUrl = APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded);
@@ -130,7 +135,9 @@ function saveToSheet() {
       try {
         var data = JSON.parse(xhr.responseText);
         if (data.success) {
-          showSyncStatus('Dados sincronizados com sucesso!', 'green');
+          dbLastUpdate = data.timestamp || new Date().toISOString();
+          localStorage.setItem('farm_db_timestamp', dbLastUpdate);
+          showSyncStatus(data.message || 'Dados sincronizados com sucesso!', 'green');
           sheetLastSync = new Date();
           var ind = document.getElementById('sync-text');
           if (ind) {
@@ -202,6 +209,53 @@ function syncFromSheet() {
   });
 }
 
+function syncLeituraSilenciosa() {
+  if (sheetSyncing) return;
+  var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.timeout = 8000;
+  xhr.onload = function() {
+    try {
+      var data = JSON.parse(xhr.responseText);
+      if (data.vendas || data.vendedores || data.produtos) {
+        var remoteTimestamp = data.lastUpdate || null;
+        if (remoteTimestamp && remoteTimestamp !== dbLastUpdate) {
+          db.vendedores = data.vendedores || db.vendedores;
+          db.produtos = data.produtos || db.produtos;
+          db.vendas = data.vendas || [];
+          db.nxt = data.nxt || db.nxt;
+          dbLastUpdate = remoteTimestamp;
+          localStorage.setItem('farm_db', JSON.stringify(db));
+          localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
+          var currentTab = document.querySelector('.section.active');
+          if (currentTab) {
+            var tabId = currentTab.id.replace('sec-', '');
+            if (tabId === 'painel' && typeof renderPainel === 'function') renderPainel();
+            if (tabId === 'vendedores' && typeof renderVendedores === 'function') renderVendedores();
+            if (tabId === 'produtos' && typeof renderProdutos === 'function') renderProdutos();
+            if (tabId === 'vendas' && typeof renderVendas === 'function') renderVendas();
+            if (tabId === 'historico' && typeof renderHistorico === 'function') renderHistorico();
+          }
+        }
+      }
+    } catch(e) {}
+  };
+  xhr.send();
+}
+
+function iniciarSyncLeitura() {
+  if (syncLeituraInterval) clearInterval(syncLeituraInterval);
+  syncLeituraInterval = setInterval(syncLeituraSilenciosa, 3000);
+}
+
+function pararSyncLeitura() {
+  if (syncLeituraInterval) {
+    clearInterval(syncLeituraInterval);
+    syncLeituraInterval = null;
+  }
+}
+
 function syncFromLogin() {
   showSyncStatus('Conectando ao banco...', 'amber');
   var url = CORS_PROXY + encodeURIComponent(APPS_SCRIPT_URL + '?action=read');
@@ -224,7 +278,9 @@ function syncFromLogin() {
         db.produtos = data.produtos || db.produtos;
         db.vendas = data.vendas || [];
         db.nxt = data.nxt || db.nxt;
+        dbLastUpdate = data.lastUpdate || null;
         localStorage.setItem('farm_db', JSON.stringify(db));
+        localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
         showSyncStatus('Dados carregados do banco! Pronto para usar.', 'green');
         return;
       }
@@ -290,7 +346,9 @@ function autoSalvar() {
   if (ind) { ind.textContent = 'Salvo às ' + ultimoAutoSave.toLocaleTimeString('pt-BR'); ind.style.opacity = '1'; setTimeout(function(){ ind.style.opacity = '0'; }, 3000); }
   saveToSheet();
 }
-setInterval(autoSalvar, 10000);
+// Sync automático REMOVIDO para evitar sobrescritas cegas
+// O sync agora acontece apenas após operações de escrita (saveDB)
+//setInterval(autoSalvar, 10000);
 
 window.addEventListener('beforeunload', function(e) {
   if (alteracoesPendentes) { var msg = 'Você tem alterações não salvas!'; e.preventDefault(); e.returnValue = msg; return msg; }
@@ -350,6 +408,7 @@ function enterApp(metodo) {
   showSyncStatus('Conectando ao banco de dados...', 'amber');
   loadFromSheet().then(function(ok) {
     migrarCamposNovos();
+    iniciarSyncLeitura();
     if (!ok) {
       showSyncStatus('Banco vazio — preparando dados...', 'amber');
       saveToSheet().then(function(saved) {
@@ -1374,6 +1433,7 @@ function fazerLogout() {
   document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('btn-sync').style.display = 'none';
   document.getElementById('btn-sheet').style.display = 'none';
+  pararSyncLeitura();
 }
 
 function isAdm() { return usuarioAtual === 'adm'; }
