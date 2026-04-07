@@ -735,7 +735,12 @@ function fecharModalEditProd() {
 
 function salvarEditProd() {
   var p = window._produtoEditando;
-  if (!p) return;
+  if (!p) {
+    alert('Erro: produto não encontrado'); 
+    return;
+  }
+  
+  console.log('💾 Salvando produto:', p.id, p.nome);
   
   var nome = document.getElementById('ep-nome').value.trim();
   var custo = parseFloat((document.getElementById('ep-custo').value || '0').replace(',', '.'));
@@ -743,6 +748,8 @@ function salvarEditProd() {
   var est = parseInt(document.getElementById('ep-est').value) || 0;
   var comissao = parseFloat((document.getElementById('ep-comissao').value || '0').replace(',', '.'));
   var ean = (document.getElementById('ep-ean').value || '').trim().replace(/\D/g, '');
+  
+  console.log('📝 Novos valores:', {nome, custo, preco, est, comissao, ean});
   
   if (!nome) { alert('Nome é obrigatório!'); return; }
   
@@ -758,9 +765,11 @@ function salvarEditProd() {
   p.comissao = comissao;
   p.ean = ean || '';
   
+  console.log('✅ Produto atualizado, chamando saveDB()...');
   saveDB();
   renderProdutos();
   fecharModalEditProd();
+  console.log('✅ Edição concluída!');
 }
 
 var _eanTimer = null;
