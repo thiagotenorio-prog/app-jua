@@ -1,5 +1,31 @@
 const https = require('https');
 
+function makeRequest(url, callback, redirectCount = 0) {
+  if (redirectCount > 5) {
+    callback({ error: 'Too many redirects' });
+    return;
+  }
+
+  const request = https.get(url, (response) => {
+    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+      makeRequest(response.headers.location, callback, redirectCount + 1);
+      return;
+    }
+    
+    let body = '';
+    response.on('data', (chunk) => body += chunk);
+    response.on('end', () => {
+      callback(null, body, response.statusCode);
+    });
+  });
+
+  request.on('error', (err) => {
+    callback(err);
+  });
+
+  request.end();
+}
+
 module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -17,30 +43,11 @@ module.exports = (req, res) => {
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
   const targetUrl = `${GAS_URL}?action=${action}` + (data ? `&data=${data}` : '');
 
-  const request = https.get(targetUrl, (response) => {
-    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-      https.get(response.headers.location, (redirectRes) => {
-        let body = '';
-        redirectRes.on('data', (chunk) => body += chunk);
-        redirectRes.on('end', () => {
-          res.status(200).send(body);
-        });
-      }).on('error', (err) => {
-        res.status(500).json({ error: err.message });
-      });
+  makeRequest(targetUrl, (err, body, statusCode) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
       return;
     }
-    
-    let body = '';
-    response.on('data', (chunk) => body += chunk);
-    response.on('end', () => {
-      res.status(200).send(body);
-    });
+    res.status(statusCode || 200).send(body);
   });
-
-  request.on('error', (err) => {
-    res.status(500).json({ error: err.message });
-  });
-
-  request.end();
 };
