@@ -53,7 +53,7 @@ function pgtoBadgeClass(k) {
 
 /* ========== SHEETS INTEGRATION (via Apps Script) ========== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzpZfPTk-pEmhTw1Iiv4pOvhaO1fiiUteezRIy2AKhMmyBGwayg5Dueopl_MEHwSXLD/exec';
-var CORS_PROXY = 'https://cors.eu.org/';
+var CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 var sheetSyncing = false;
 var sheetLastSync = null;
 var dbLastUpdate = null;
@@ -127,10 +127,13 @@ function saveToSheet() {
     var encoded = btoa(unescape(encodeURIComponent(payload)));
     var targetUrl = APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(encoded);
     var url = CORS_PROXY + encodeURIComponent(targetUrl);
+    console.log('📤 Enviando para o banco...');
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
-    xhr.timeout = 15000;
+    xhr.timeout = 25000;
     xhr.onload = function() {
+      console.log('📤 Resposta status:', xhr.status);
+      console.log('📤 Resposta:', xhr.responseText.substring(0, 200));
       sheetSyncing = false;
       try {
         var data = JSON.parse(xhr.responseText);
@@ -735,12 +738,7 @@ function fecharModalEditProd() {
 
 function salvarEditProd() {
   var p = window._produtoEditando;
-  if (!p) {
-    alert('Erro: produto não encontrado'); 
-    return;
-  }
-  
-  console.log('💾 Salvando produto:', p.id, p.nome);
+  if (!p) { alert('Erro: produto não encontrado'); return; }
   
   var nome = document.getElementById('ep-nome').value.trim();
   var custo = parseFloat((document.getElementById('ep-custo').value || '0').replace(',', '.'));
@@ -749,13 +747,10 @@ function salvarEditProd() {
   var comissao = parseFloat((document.getElementById('ep-comissao').value || '0').replace(',', '.'));
   var ean = (document.getElementById('ep-ean').value || '').trim().replace(/\D/g, '');
   
-  console.log('📝 Novos valores:', {nome, custo, preco, est, comissao, ean});
-  
   if (!nome) { alert('Nome é obrigatório!'); return; }
   
   if (ean && db.produtos.some(function(x) { return x.id !== p.id && x.ean === ean; })) {
-    alert('⚠️ EAN já cadastrado em outro produto!');
-    return;
+    alert('⚠️ EAN já cadastrado em outro produto!'); return;
   }
   
   p.nome = nome;
@@ -765,11 +760,9 @@ function salvarEditProd() {
   p.comissao = comissao;
   p.ean = ean || '';
   
-  console.log('✅ Produto atualizado, chamando saveDB()...');
   saveDB();
   renderProdutos();
   fecharModalEditProd();
-  console.log('✅ Edição concluída!');
 }
 
 var _eanTimer = null;
