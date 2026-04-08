@@ -89,5 +89,6 @@ Para garantir a integridade dos dados históricos, o sistema possui uma trava de
 
 ---
 **Documentação gerada em**: 08/04/2026  
-**Responsável**: Tecsperts tecnologia
+**Responsável técnico**: Tecsperts tecnologia  
+**Idealizador do projeto**: Thiago Tenório
 
