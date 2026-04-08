@@ -79,6 +79,15 @@ A arquitetura é composta por quatro camadas principais:
 3. **Segurança**: Implementar um sistema de login mais robusto (ex: Firebase Auth ou integração melhor com Google OAuth).
 4. **Offline Avançado**: Melhorar a fila de sincronização para garantir que o app funcione perfeitamente mesmo com instabilidade severa de internet.
 
+## 7. Regras de Exclusão de Produtos
+
+Para garantir a integridade dos dados históricos, o sistema possui uma trava de segurança na exclusão de produtos:
+
+- **Restrição**: Produtos que possuem qualquer registro de venda associado (mesmo que a venda tenha sido cancelada) não podem ser excluídos permanentemente através da interface. Nesses casos, o botão de "Excluir" é substituído pelo texto "Excluir indisponível".
+- **Opção 1 (Recomendada) - Inativar**: O operador deve utilizar a opção "Inativar". Isso remove o produto da tela de lançamentos e buscas, mas preserva os dados históricos para relatórios de lucratividade e métricas do painel.
+- **Opção 2 - Exclusão Total**: Caso seja estritamente necessário remover o produto, todos os registros de vendas associados a ele devem ser removidos do banco de dados primeiro.
+
 ---
-**Documentação gerada em**: 08/04/2026
-**Responsável**: Antigravity AI
+**Documentação gerada em**: 08/04/2026  
+**Responsável**: Tecsperts tecnologia
+
