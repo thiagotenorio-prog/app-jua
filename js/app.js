@@ -89,6 +89,7 @@ function loadFromSheet() {
             db.produtos   = data.produtos   || db.produtos;
             db.vendas     = data.vendas     || [];
             db.nxt        = data.nxt        || db.nxt;
+            db.deletedProdutos = data.deletedProdutos || [];
             dbLastUpdate  = serverTs;
             localStorage.setItem('farm_db', JSON.stringify(db));
             localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
@@ -132,6 +133,7 @@ function saveToSheet() {
       produtos: db.produtos,
       vendas: db.vendas,
       nxt: db.nxt,
+      deletedProdutos: db.deletedProdutos,
       lastUpdate: dbLastUpdate || new Date().toISOString()
     });
     // POST com JSON no body — evita limite de tamanho de URL (GET/base64 dava 400)
@@ -238,6 +240,7 @@ function syncLeituraSilenciosa() {
           db.produtos = data.produtos || db.produtos;
           db.vendas = data.vendas || [];
           db.nxt = data.nxt || db.nxt;
+          db.deletedProdutos = data.deletedProdutos || [];
           dbLastUpdate = remoteTimestamp;
           localStorage.setItem('farm_db', JSON.stringify(db));
           localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');
@@ -291,6 +294,7 @@ function syncFromLogin() {
         db.produtos = data.produtos || db.produtos;
         db.vendas = data.vendas || [];
         db.nxt = data.nxt || db.nxt;
+        db.deletedProdutos = data.deletedProdutos || [];
         dbLastUpdate = data.lastUpdate || null;
         localStorage.setItem('farm_db', JSON.stringify(db));
         localStorage.setItem('farm_db_timestamp', dbLastUpdate || '');

@@ -1,0 +1,9 @@
+- [x] Analisar a causa raiz da falha na exclusão de produtos
+- [x] Criar backup do arquivo `js/app.js`
+- [x] Corrigir a sincronização do campo `deletedProdutos` no `js/app.js`
+    - [x] Incluir no envio (`saveToSheet`)
+    - [x] Incluir no recebimento (`loadFromSheet`)
+    - [x] Incluir no recebimento silencioso (`syncLeituraSilenciosa`)
+    - [x] Incluir no recebimento de login (`syncFromLogin`)
+- [ ] Validar a correção (Manual/Visual)
+- [ ] Criar walkthrough final
