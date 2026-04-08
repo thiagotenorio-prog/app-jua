@@ -61,7 +61,7 @@ A arquitetura é composta por quatro camadas principais:
 ## 5. Avaliação Técnica
 
 ### Pontos Fortes
-- **Custo Zero**: Infraestrutura baseada em ferramentas gratuitas (Google e Vercel).
+- **Serviços de ponta**: Infraestrutura baseada em ferramentas líderes de mercado como a (Google e Vercel).
 - **Simplicidade de Uso**: Interface intuitiva e direta.
 - **Transparência**: O dono da farmácia pode acompanhar tudo pela planilha em tempo real.
 - **Resiliência**: O sistema de merge no Apps Script é uma solução criativa para evitar conflitos em um ambiente multi-usuário sem banco de dados SQL tradicional.
